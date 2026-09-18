@@ -466,7 +466,6 @@ async def on_message(message):
 async def purchasepanel(ctx):
     await ctx.message.delete()
     description_text = (
-        "**RATHORE X CHEATS — PURCHASE CENTER**\n"
         
         "Welcome to **RATHORE X CHEATS**, your trusted source for premium modifications, tools, and exclusive services. Create a ticket below to receive fast support, purchase assistance, or answers to your questions.\n\n"
         "\n"
@@ -562,7 +561,6 @@ async def paymentpanel(ctx):
 async def supportpanel(ctx):
     await ctx.message.delete()
     description_text = (
-        "**RATHORE X CHEATS — SUPPORT TICKET**\n"
         
         "Need help? Our support team is here to assist you with technical issues, account problems, product questions, or general inquiries.\n\n"
         "\n"
