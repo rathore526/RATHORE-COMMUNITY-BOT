@@ -6,6 +6,7 @@ import discord
 from discord.ext import commands
 import asyncio
 import re
+import io
 
 # ================= FLASK KEEP ALIVE SERVER =================
 app = Flask('')
@@ -32,12 +33,12 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 # ================= CONFIGURATION =================
 WELCOME_CHANNEL_ID = 1548746560626499636
-AUDIT_LOG_CHANNEL_ID = 1548751930665340989   # Server logs ID
+AUDIT_LOG_CHANNEL_ID = 1548751930665340989   # Server logs ID / Ticket Transcripts
 JOIN_LEAVE_CHANNEL_ID = 1548752079248691200  # Join-Leave logs ID
 MOD_LOG_CHANNEL_ID = 1548751987695296664     # Mod-logs ID
 AUTO_ROLE_NAME = "→ Rathore Community"
 BAD_WORDS = ["rathore ke maa ke chut", "rathore randi", "rathore ke mummy", "rathore"]
-TARGET_USER_ID = 1529085822551326862
+TARGET_USER_ID = 1529085822551326862  # Target / Owner ID with special security privileges
 
 # 💳 PAYMENT DETAILS CONFIGURATION
 UPI_ID = "9818940367@fam"
@@ -60,14 +61,34 @@ SUPPORT_CATEGORY_NAME = "🎟️┃𝘚𝘜𝘗𝘗𝘖𝘙𝘛"
 PAYMENT_CATEGORY_NAME = "💳┃𝘗𝘈𝘠𝘔𝘌𝘕𝘛-𝘔𝘌𝘛𝘏𝘖𝘋"
 # =================================================
 
-# --- CLOSE TICKET BUTTON ---
+# --- CLOSE TICKET BUTTON WITH TRANSCRIPT LOGGING ---
 class CloseButton(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
 
     @discord.ui.button(label="🔒 Close Ticket", style=discord.ButtonStyle.red, custom_id="close_ticket_btn")
     async def close_ticket(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_message("⚠️ Yeh ticket 5 seconds mein delete ho jayega...")
+        await interaction.response.send_message("⚠️ Generating transcript & deleting ticket in 5 seconds...")
+
+        # Audit Log me File Save karne ka System
+        log_channel = interaction.guild.get_channel(1550511155464773652)
+        if log_channel:
+            messages = []
+            async for msg in interaction.channel.history(limit=500, oldest_first=True):
+                timestamp = msg.created_at.strftime('%Y-%m-%d %H:%M:%S')
+                messages.append(f"[{timestamp}] {msg.author} ({msg.author.id}): {msg.content}")
+
+            transcript_text = "\n".join(messages)
+            file_data = io.BytesIO(transcript_text.encode('utf-8'))
+            discord_file = discord.File(fp=file_data, filename=f"transcript-{interaction.channel.name}.txt")
+
+            embed = discord.Embed(
+                title="📄 Ticket Transcript Log",
+                description=f"**Ticket Name:** {interaction.channel.name}\n**Closed By:** {interaction.user.mention}",
+                color=discord.Color.red()
+            )
+            await log_channel.send(embed=embed, file=discord_file)
+
         await asyncio.sleep(5)
         await interaction.channel.delete()
 
@@ -411,52 +432,43 @@ async def on_member_ban(guild, user):
 
 @bot.event
 async def on_member_unban(guild, user):
-    mod_channel = bot.get_channel(MOD_LOG_CHANNEL_ID)
+    mod_channel = bot.get_channel(1548751987695296664)
     if mod_channel:
         embed = discord.Embed(title="🔓 Member Unbanned", color=discord.Color.green())
         embed.add_field(name="User", value=f"{user.mention} ({user.name})", inline=False)
         embed.set_thumbnail(url=user.display_avatar.url)
         await mod_channel.send(embed=embed)
 
-# --- AUTO MODERATION & MESSAGES ---
+# --- AUTO MODERATION & TARGET USER SECURITY ---
 @bot.event
 async def on_message(message):
     if message.author == bot.user:
         return
 
-    if message.author.id == TARGET_USER_ID or (isinstance(message.author, discord.Member) and message.author.guild_permissions.administrator):
+    # SECURITY EXEMPTION: Owner aur Admins bypass karenge
+    if message.author.id == 1529085822551326862 or (isinstance(message.author, discord.Member) and message.author.guild_permissions.administrator):
         await bot.process_commands(message)
         return
 
     msg_content = message.content.lower()
 
+    # --- AUTOMOD CHECKS FOR NORMAL USERS ---
+    
+    # 1. Invite Link Check
     discord_invite_pattern = r"(discord\.gg|discord\.com/invite)/[a-zA-Z0-9]+"
     if re.search(discord_invite_pattern, msg_content):
-        try:
-            await message.delete()
-            await message.channel.send(f"⚠️ {message.author.mention}, server invite links bhejna allowed nahi hai!", delete_after=5)
-        except Exception as e:
-            print(f"Error: {e}")
+        await message.delete()
+        await message.channel.send(f"⚠️ {message.author.mention}, invite links allowed nahi hain!", delete_after=5)
         return
 
-    user_tagged = any(user.id == TARGET_USER_ID for user in message.mentions)
-    if user_tagged or message.mention_everyone:
-        try:
-            await message.delete()
-            await message.channel.send(f"⚠️ **WARNING:** {message.author.mention}, aap owner ko ya `@everyone` ping nahi kar sakte!", delete_after=6)
-        except Exception as e:
-            print(f"Tag delete error: {e}")
-        return
-
+    # 2. Bad Words Check
     for word in BAD_WORDS:
         if word in msg_content:
-            try:
-                await message.delete()
-                await message.channel.send(f"⚠️ {message.author.mention}, yeh word yahan use karna mana hai!", delete_after=5)
-            except Exception as e:
-                print(f"Error: {e}")
+            await message.delete()
+            await message.channel.send(f"⚠️ {message.author.mention}, bad words allowed nahi hain!", delete_after=5)
             return
 
+    # IMPORTANT: Normal users ke commands process karne ke liye yeh line zaruri hai
     await bot.process_commands(message)
 
 # --- COMMANDS ---
@@ -481,7 +493,6 @@ async def purchasepanel(ctx):
         "• Do not spam, ping staff repeatedly, or create multiple tickets for the same issue.\n"
         "⠀\n"
         "• Payments must be completed through approved methods only.\n\n"
-        
         "⠀\n"
         "📌 **REGRAS**\n"
         "⠀\n"
@@ -550,7 +561,7 @@ async def paymentpanel(ctx):
         "• 💰 USDT — TRC20\n"
         "⠀\n"
         "• 💰 USDT — BEP20\n"
-        
+        "⠀\n"
         "\n"
         "📌 **PAYMENT INSTRUCTIONS**\n\n"
         "⠀\n"
@@ -565,7 +576,7 @@ async def paymentpanel(ctx):
         "5. Wait for confirmation after your payment has been verified.\n\n"
         "⠀\n"
         "⚠️ **IMPORTANT:** Make sure the payment details are correct before sending any payment.\n"
-        
+        "⠀\n"
         "\n"
         "🔥 **RATHORE X CHEATS @2026**\n"
         "⠀\n"
