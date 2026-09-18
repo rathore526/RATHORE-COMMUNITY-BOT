@@ -134,7 +134,7 @@ class PurchaseDropdown(discord.ui.Select):
         )
 
         # 3. LOG CHANNEL ME NOTIFICATION (Yahan se add hua hai)
-        log_channel = guild.get_channel(TICKET_LOG_CHANNEL_ID)
+        log_channel = guild.get_channel(1550532272011214919)
         if log_channel:
             embed = discord.Embed(
                 title="🎟️ New Ticket Opened",
