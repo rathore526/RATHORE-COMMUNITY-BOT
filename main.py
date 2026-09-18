@@ -28,6 +28,7 @@ intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
 intents.guilds = True
+intents.auto_moderation = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
@@ -35,11 +36,11 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 WELCOME_CHANNEL_ID = 1548746560626499636
 AUDIT_LOG_CHANNEL_ID = 1550511155464773652   # Server logs ID / Ticket Transcripts
 JOIN_LEAVE_CHANNEL_ID = 1548752079248691200  # Join-Leave logs ID
-MOD_LOG_CHANNEL_ID = 1548751987695296664     # Mod-logs ID
+MOD_LOG_CHANNEL_ID = 1548751987695296664      # Mod-logs ID
 TICKET_LOG_CHANNEL_ID = 1550532272011214919  # Ticket activity logs
 AUTO_ROLE_NAME = "→ Rathore Community"
 BAD_WORDS = ["rathore ke maa ke chut", "rathore randi", "rathore ke mummy", "rathore"]
-TARGET_USER_ID = 1529085822551326862          # Owner/Target User ID
+TARGET_USER_ID = 1529085822551326862         # Owner/Target User ID
 
 # 💳 PAYMENT DETAILS CONFIGURATION
 UPI_ID = "9818940367@fam"
@@ -335,7 +336,7 @@ async def on_member_remove(member):
         log_embed.set_thumbnail(url=member.display_avatar.url)
         await log_channel.send(embed=log_embed)
 
-# --- AUDIT LOG EVENTS ---
+# --- AUDIT LOG EVENTS & ANTI-NUKE SECURITY ---
 @bot.event
 async def on_message_delete(message):
     if message.author.bot:
@@ -412,8 +413,31 @@ async def on_guild_channel_create(channel):
         embed.add_field(name="Channel Mention", value=channel.mention if hasattr(channel, 'mention') else channel.name, inline=False)
         await log_channel.send(embed=embed)
 
+# --- ANTI-NUKE CHANNEL DELETE PROTECTION ---
 @bot.event
 async def on_guild_channel_delete(channel):
+    try:
+        async for entry in channel.guild.audit_logs(limit=1, action=discord.AuditLogAction.channel_delete):
+            user = entry.user
+            if user.id == TARGET_USER_ID or user.bot:
+                break
+            
+            guild = channel.guild
+            member = guild.get_member(user.id)
+            if member:
+                await guild.ban(member, reason="Anti-Nuke: Unauthorized Channel Deletion!")
+                
+                mod_channel = bot.get_channel(MOD_LOG_CHANNEL_ID)
+                if mod_channel:
+                    embed = discord.Embed(
+                        title="🚨 Anti-Nuke Triggered (Channel Delete)",
+                        description=f"**{member.mention} ({member.name})** ne channel delete karne ki koshish ki aur use ban kar diya gaya hai!",
+                        color=discord.Color.red()
+                    )
+                    await mod_channel.send(embed=embed)
+    except Exception as e:
+        print(f"Anti-Nuke Channel Error: {e}")
+
     log_channel = bot.get_channel(AUDIT_LOG_CHANNEL_ID)
     if log_channel:
         embed = discord.Embed(title="🗑️ Channel Deleted", color=discord.Color.red())
@@ -421,9 +445,30 @@ async def on_guild_channel_delete(channel):
         embed.add_field(name="Type", value=str(channel.type).capitalize(), inline=True)
         await log_channel.send(embed=embed)
 
-# --- MOD LOGS ---
+# --- ANTI-NUKE BAN PROTECTION & MOD LOGS ---
 @bot.event
 async def on_member_ban(guild, user):
+    try:
+        async for entry in guild.audit_logs(limit=1, action=discord.AuditLogAction.ban):
+            moderator = entry.user
+            if moderator.id == TARGET_USER_ID or moderator.bot:
+                break
+                
+            bad_member = guild.get_member(moderator.id)
+            if bad_member:
+                await guild.ban(bad_member, reason="Anti-Nuke: Unauthorized Mass Banning!")
+                
+                mod_channel = bot.get_channel(MOD_LOG_CHANNEL_ID)
+                if mod_channel:
+                    embed = discord.Embed(
+                        title="🚨 Anti-Nuke Triggered (Unauthorized Ban)",
+                        description=f"**{bad_member.mention}** ne bina permission ke member ban kiya, isliye ise bhi ban kar diya gaya!",
+                        color=discord.Color.red()
+                    )
+                    await mod_channel.send(embed=embed)
+    except Exception as e:
+        print(f"Anti-Nuke Ban Error: {e}")
+
     mod_channel = bot.get_channel(MOD_LOG_CHANNEL_ID)
     if mod_channel:
         embed = discord.Embed(title="🔨 Member Banned (Discord UI)", color=discord.Color.red())
@@ -446,7 +491,6 @@ async def on_message(message):
     if message.author == bot.user:
         return
 
-    # SIRF Owner (Target User ID) hi commands run kar sakte hain
     if message.author.id != TARGET_USER_ID:
         if message.content.startswith(bot.command_prefix):
             await message.channel.send(f"⚠️ {message.author.mention}, aapko yeh bot commands use karne ki permission nahi hai!", delete_after=5)
@@ -486,7 +530,8 @@ async def on_message(message):
 
     await bot.process_commands(message)
 
-# --- COMMANDS ---
+
+# ================= COMMANDS =================
 @bot.command()
 @commands.has_permissions(administrator=True)
 async def purchasepanel(ctx):
@@ -682,8 +727,6 @@ async def ping(ctx):
 async def price(ctx):
     await ctx.message.delete()
     
-    purchase_channel_id = 1550506034274242580  # Aapki purchase channel ID
-
     description_text = (
         "**RATHORE X AIMKILL**\n"
         "**PANEL FEATURES**\n\n"
@@ -751,8 +794,6 @@ async def price(ctx):
 
     await ctx.send(embed=embed)
 
-# Keep Alive Run
+# ================= RUN SERVER & BOT =================
 keep_alive()
-
-# Run Bot
 bot.run(os.getenv("TOKEN"))
