@@ -30,6 +30,8 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 # ================= CONFIGURATION =================
 WELCOME_CHANNEL_ID = 1548746560626499636
 AUDIT_LOG_CHANNEL_ID = 1548751930665340989  # 👈 YAHAN APNI server-logs CHANNEL KI ID PASTE KAREIN
+JOIN_LEAVE_CHANNEL_ID = 1548752079248691200  # 👈 YAHAN APNE JOIN-LEAVE CHANNEL KI ID PASTE KAREIN
+MOD_LOG_CHANNEL_ID = 1548751987695296664  # 👈 Yahan mod-logs channel ki ID paste karein
 AUTO_ROLE_NAME = "→ Rathore Community"
 BAD_WORDS = ["rathore ke maa ke chut", "rathore randi", "rathore ke mummy", "rathore"]
 TARGET_USER_ID = 1529085822551326862
