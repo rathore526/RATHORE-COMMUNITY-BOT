@@ -2,7 +2,12 @@ import os
 from flask import Flask
 from threading import Thread
 import datetime
+import discord
+from discord.ext import commands
+import asyncio
+import re
 
+# ================= FLASK KEEP ALIVE SERVER =================
 app = Flask('')
 
 @app.route('/')
@@ -17,11 +22,7 @@ def keep_alive():
     t = Thread(target=run)
     t.start()
 
-import discord
-from discord.ext import commands
-import asyncio
-import re
-
+# ================= DISCORD BOT SETUP =================
 intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
@@ -38,20 +39,20 @@ AUTO_ROLE_NAME = "→ Rathore Community"
 BAD_WORDS = ["rathore ke maa ke chut", "rathore randi", "rathore ke mummy", "rathore"]
 TARGET_USER_ID = 1529085822551326862
 
-# 💳 PAYMENT DETAILS CONFIGURATION (Apni Details Yahan Change Karein)
-UPI_ID = "9818940367@fam"                        # Aapka UPI ID
-UPI_NAME = "Krishna"                      # Payee Name
-UPI_QR_URL = "https://cdn.discordapp.com/attachments/1548769995582869554/1550484011082850384/Screenshot_20260809-233235_FamApp.jpg?ex=6aae8042&is=6aad2ec2&hm=b165e0cfbae4a37e6627b329dcea72fbb2f0573703396fb4ff5b1f06307a9e1f&"    # Aapka UPI QR Code Image Link
+# 💳 PAYMENT DETAILS CONFIGURATION
+UPI_ID = "9818940367@fam"
+UPI_NAME = "Krishna"
+UPI_QR_URL = "https://cdn.discordapp.com/attachments/1548769995582869554/1550484011082850384/Screenshot_20260809-233235_FamApp.jpg?ex=6aae8042&is=6aad2ec2&hm=b165e0cfbae4a37e6627b329dcea72fbb2f0573703396fb4ff5b1f06307a9e1f&"
 
-BINANCE_ID = "123456789"                          # Aapka Binance Pay ID / USDT Address
-BINANCE_NAME = "Rathore X Crypto"                 # Account Name
-BINANCE_QR_URL = "https://your-image-url.com/binance_qr.png"  # Binance QR Code Image Link
+BINANCE_ID = "123456789"
+BINANCE_NAME = "Rathore X Crypto"
+BINANCE_QR_URL = "https://your-image-url.com/binance_qr.png"
 
 # 🖼️ BANNER IMAGES LINKS
 BANNER_IMAGE_URL = "https://cdn.discordapp.com/attachments/1529086631536234637/1548913864811479070/WLCM.gif?ex=6aad6732&is=6aac15b2&hm=33843e4ad7963cecc2ed66f3e05c7f36db641f4cc2a45e120e2ddbdd3d0288ff&"
 PURCHASE_BANNER_URL = "https://media.discordapp.net/attachments/1548769995582869554/1550471469119574067/standard.gif?ex=6aae7494&is=6aad2314&hm=63659b85776fbed5f9a7bb2ed29587cc542062c55cc189e705f35996392d9497&=&width=640&height=360"
 SUPPORT_BANNER_URL = "https://cdn.discordapp.com/attachments/1529086631536234637/1548903192644026489/standard_2.gif?ex=6aad5d42&is=6aac0bc2&hm=f3ec8787fc33990e65cb180fde4ba00a66b4bd0ad7084f297f145f23f1f1ce78&"
-PAYMENT_BANNER_URL = "https://media.discordapp.net/attachments/1548769995582869554/1550471469119574067/standard.gif" # Aap chaho toh alag banner image link daal sakte ho
+PAYMENT_BANNER_URL = "https://cdn.discordapp.com/attachments/1548769995582869554/1550488423511629914/standard_1.gif?ex=6aae845e&is=6aad32de&hm=6c150d2e91f7c55626853150851a4c029ba6372c705112e4ee222ca2c35caadf&"
 
 # 🎫 TICKET CATEGORIES
 PURCHASE_CATEGORY_NAME = "🎫┃𝘗𝘜𝘙𝘊𝘏𝘈𝘚𝘌-𝘏𝘌𝘙𝘌"
@@ -129,7 +130,7 @@ class PurchaseView(discord.ui.View):
         super().__init__(timeout=None)
         self.add_item(PurchaseDropdown())
 
-# --- 2. PAYMENT METHOD DROPDOWN (Dedicated Panel ke liye) ---
+# --- 2. PAYMENT METHOD DROPDOWN ---
 class PaymentDropdown(discord.ui.Select):
     def __init__(self):
         options = [
@@ -151,10 +152,7 @@ class PaymentDropdown(discord.ui.Select):
         member = interaction.user
         selected_option = self.values[0]
 
-        if "Indian Payment" in selected_option:
-            prefix = "upi"
-        else:
-            prefix = "crypto"
+        prefix = "upi" if "Indian Payment" in selected_option else "crypto"
 
         category = discord.utils.get(guild.categories, name=PAYMENT_CATEGORY_NAME)
         if not category:
@@ -252,7 +250,6 @@ class SupportView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
         self.add_item(SupportDropdown())
-
 
 # --- BOT EVENTS ---
 @bot.event
@@ -464,7 +461,6 @@ async def on_message(message):
 
 # --- COMMANDS ---
 
-# 1. Purchase Panel
 @bot.command()
 @commands.has_permissions(administrator=True)
 async def ticketpanel(ctx):
@@ -480,7 +476,6 @@ async def ticketpanel(ctx):
         embed.set_image(url=PURCHASE_BANNER_URL)
     await ctx.send(embed=embed, view=PurchaseView())
 
-# 2. Payment Panel (Dedicated Channel Command)
 @bot.command()
 @commands.has_permissions(administrator=True)
 async def paymentpanel(ctx):
@@ -498,7 +493,6 @@ async def paymentpanel(ctx):
         embed.set_image(url=PAYMENT_BANNER_URL)
     await ctx.send(embed=embed, view=PaymentView())
 
-# 3. Support Panel
 @bot.command()
 @commands.has_permissions(administrator=True)
 async def supportpanel(ctx):
@@ -514,7 +508,6 @@ async def supportpanel(ctx):
         embed.set_image(url=SUPPORT_BANNER_URL)
     await ctx.send(embed=embed, view=SupportView())
 
-# --- PAYMENT COMMANDS FOR STAFF ---
 @bot.command()
 @commands.has_permissions(administrator=True)
 async def upi(ctx):
@@ -527,7 +520,7 @@ async def upi(ctx):
                     f"⚠️ *Payment complete hone ke baad screenshot zaroor bhejein!*",
         color=discord.Color.green()
     )
-    if UPI_QR_URL and UPI_QR_URL != "https://your-image-url.com/qr.png":
+    if UPI_QR_URL:
         embed.set_image(url=UPI_QR_URL)
     embed.set_footer(text="Rathore X Cheats | Secure Payment System")
     await ctx.send(embed=embed)
@@ -587,7 +580,6 @@ async def clear(ctx, amount: int = 5):
     await ctx.channel.purge(limit=amount + 1)
     await ctx.send(f"🧹 {amount} messages delete kar diye gaye!", delete_after=3)
 
-# --- MODERATION COMMANDS ---
 @bot.command()
 @commands.has_permissions(kick_members=True)
 async def kick(ctx, member: discord.Member, *, reason="Koyi reason nahi diya"):
@@ -635,5 +627,8 @@ async def timeout(ctx, member: discord.Member, minutes: int = 10, *, reason="Rul
         embed.set_thumbnail(url=member.display_avatar.url)
         await mod_channel.send(embed=embed)
 
+# Keep Alive Run
 keep_alive()
+
+# Run Bot (Token Environmental Variable ya direct pass karein)
 bot.run(os.getenv("TOKEN"))
