@@ -1,6 +1,7 @@
 import os
 from flask import Flask
 from threading import Thread
+import datetime
 
 app = Flask('')
 
@@ -29,9 +30,9 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 # ================= CONFIGURATION =================
 WELCOME_CHANNEL_ID = 1548746560626499636
-AUDIT_LOG_CHANNEL_ID = 1548751930665340989  # 👈 YAHAN APNI server-logs CHANNEL KI ID PASTE KAREIN
-JOIN_LEAVE_CHANNEL_ID = 1548752079248691200  # 👈 YAHAN APNE JOIN-LEAVE CHANNEL KI ID PASTE KAREIN
-MOD_LOG_CHANNEL_ID = 1548751987695296664  # 👈 Yahan mod-logs channel ki ID paste karein
+AUDIT_LOG_CHANNEL_ID = 1548751930665340989   # Server logs ID
+JOIN_LEAVE_CHANNEL_ID = 1548752079248691200  # Join-Leave logs ID
+MOD_LOG_CHANNEL_ID = 1548751987695296664     # Mod-logs ID
 AUTO_ROLE_NAME = "→ Rathore Community"
 BAD_WORDS = ["rathore ke maa ke chut", "rathore randi", "rathore ke mummy", "rathore"]
 TARGET_USER_ID = 1529085822551326862
@@ -216,20 +217,28 @@ async def on_member_join(member):
             embed.set_image(url=BANNER_IMAGE_URL)
         await channel.send(content=content_text, embed=embed)
 
-    # Audit Log: Member Joined
-    log_channel = bot.get_channel(AUDIT_LOG_CHANNEL_ID)
+    # Join Log Message (Join-Leave Channel)
+    log_channel = bot.get_channel(JOIN_LEAVE_CHANNEL_ID)
     if log_channel:
-        log_embed = discord.Embed(title="📥 Member Joined", color=discord.Color.green())
-        log_embed.add_field(name="User", value=f"{member.mention} ({member.name})", inline=False)
+        log_embed = discord.Embed(
+            title="📥 Member Joined",
+            description=f"{member.mention} ({member.name}) ne server join kiya!",
+            color=discord.Color.green()
+        )
+        log_embed.set_thumbnail(url=member.display_avatar.url)
         await log_channel.send(embed=log_embed)
 
 @bot.event
 async def on_member_remove(member):
-    # Audit Log: Member Left
-    log_channel = bot.get_channel(AUDIT_LOG_CHANNEL_ID)
+    # Leave Log Message (Join-Leave Channel)
+    log_channel = bot.get_channel(JOIN_LEAVE_CHANNEL_ID)
     if log_channel:
-        log_embed = discord.Embed(title="📤 Member Left", color=discord.Color.dark_grey())
-        log_embed.add_field(name="User", value=f"{member.name}", inline=False)
+        log_embed = discord.Embed(
+            title="📤 Member Left",
+            description=f"**{member.name}** ne server chor diya hai.",
+            color=discord.Color.red()
+        )
+        log_embed.set_thumbnail(url=member.display_avatar.url)
         await log_channel.send(embed=log_embed)
 
 # --- AUDIT LOG EVENTS (DELETED & EDITED MESSAGES) ---
@@ -257,6 +266,25 @@ async def on_message_edit(before, after):
         embed.add_field(name="Before", value=before.content, inline=False)
         embed.add_field(name="After", value=after.content, inline=False)
         await log_channel.send(embed=embed)
+
+# --- MANUAL BAN & UNBAN EVENTS (MOD LOGS) ---
+@bot.event
+async def on_member_ban(guild, user):
+    mod_channel = bot.get_channel(MOD_LOG_CHANNEL_ID)
+    if mod_channel:
+        embed = discord.Embed(title="🔨 Member Banned (Discord UI)", color=discord.Color.red())
+        embed.add_field(name="User", value=f"{user.mention} ({user.name})", inline=False)
+        embed.set_thumbnail(url=user.display_avatar.url)
+        await mod_channel.send(embed=embed)
+
+@bot.event
+async def on_member_unban(guild, user):
+    mod_channel = bot.get_channel(MOD_LOG_CHANNEL_ID)
+    if mod_channel:
+        embed = discord.Embed(title="🔓 Member Unbanned", color=discord.Color.green())
+        embed.add_field(name="User", value=f"{user.mention} ({user.name})", inline=False)
+        embed.set_thumbnail(url=user.display_avatar.url)
+        await mod_channel.send(embed=embed)
 
 # --- AUTO MODERATION & MESSAGES ---
 @bot.event
@@ -387,17 +415,53 @@ async def clear(ctx, amount: int = 5):
     await ctx.channel.purge(limit=amount + 1)
     await ctx.send(f"🧹 {amount} messages delete kar diye gaye!", delete_after=3)
 
+# --- MODERATION COMMANDS (LOGGED TO MOD_LOG_CHANNEL_ID) ---
 @bot.command()
 @commands.has_permissions(kick_members=True)
 async def kick(ctx, member: discord.Member, *, reason="Koyi reason nahi diya"):
     await member.kick(reason=reason)
     await ctx.send(f"🚨 {member.mention} ko kick kar diya gaya. Reason: {reason}")
+    
+    mod_channel = bot.get_channel(MOD_LOG_CHANNEL_ID)
+    if mod_channel:
+        embed = discord.Embed(title="👢 Member Kicked", color=discord.Color.orange())
+        embed.add_field(name="User", value=f"{member.mention} ({member.name})", inline=True)
+        embed.add_field(name="Moderator", value=ctx.author.mention, inline=True)
+        embed.add_field(name="Reason", value=reason, inline=False)
+        embed.set_thumbnail(url=member.display_avatar.url)
+        await mod_channel.send(embed=embed)
 
 @bot.command()
 @commands.has_permissions(ban_members=True)
 async def ban(ctx, member: discord.Member, *, reason="Rule break kiya"):
     await member.ban(reason=reason)
     await ctx.send(f"⛔ {member.mention} ko BAN kar diya gaya. Reason: {reason}")
+    
+    mod_channel = bot.get_channel(MOD_LOG_CHANNEL_ID)
+    if mod_channel:
+        embed = discord.Embed(title="🔨 Member Banned", color=discord.Color.dark_red())
+        embed.add_field(name="User", value=f"{member.mention} ({member.name})", inline=True)
+        embed.add_field(name="Moderator", value=ctx.author.mention, inline=True)
+        embed.add_field(name="Reason", value=reason, inline=False)
+        embed.set_thumbnail(url=member.display_avatar.url)
+        await mod_channel.send(embed=embed)
+
+@bot.command()
+@commands.has_permissions(moderate_members=True)
+async def timeout(ctx, member: discord.Member, minutes: int = 10, *, reason="Rule break kiya"):
+    duration = datetime.timedelta(minutes=minutes)
+    await member.timeout(duration, reason=reason)
+    await ctx.send(f"⏳ {member.mention} ko {minutes} minute ke liye timeout kar diya gaya.")
+    
+    mod_channel = bot.get_channel(MOD_LOG_CHANNEL_ID)
+    if mod_channel:
+        embed = discord.Embed(title="⏳ Member Timed Out", color=discord.Color.gold())
+        embed.add_field(name="User", value=f"{member.mention} ({member.name})", inline=True)
+        embed.add_field(name="Duration", value=f"{minutes} Minutes", inline=True)
+        embed.add_field(name="Moderator", value=ctx.author.mention, inline=True)
+        embed.add_field(name="Reason", value=reason, inline=False)
+        embed.set_thumbnail(url=member.display_avatar.url)
+        await mod_channel.send(embed=embed)
 
 # Render ke liye safe token retrieval
 keep_alive()
