@@ -20,7 +20,6 @@ import discord
 from discord.ext import commands
 import asyncio
 import re
-import os
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -30,6 +29,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 # ================= CONFIGURATION =================
 WELCOME_CHANNEL_ID = 1548746560626499636
+AUDIT_LOG_CHANNEL_ID = 1548751930665340989  # 👈 YAHAN APNI server-logs CHANNEL KI ID PASTE KAREIN
 AUTO_ROLE_NAME = "→ Rathore Community"
 BAD_WORDS = ["rathore ke maa ke chut", "rathore randi", "rathore ke mummy", "rathore"]
 TARGET_USER_ID = 1529085822551326862
@@ -193,6 +193,7 @@ async def on_member_join(member):
         except Exception as e:
             print(f"Role error: {e}")
 
+    # Welcome Message
     channel = bot.get_channel(WELCOME_CHANNEL_ID)
     if channel:
         content_text = f"{member.mention} Welcome to **RATHORE COMMUNITY**!!!"
@@ -212,6 +213,48 @@ async def on_member_join(member):
         if BANNER_IMAGE_URL:
             embed.set_image(url=BANNER_IMAGE_URL)
         await channel.send(content=content_text, embed=embed)
+
+    # Audit Log: Member Joined
+    log_channel = bot.get_channel(AUDIT_LOG_CHANNEL_ID)
+    if log_channel:
+        log_embed = discord.Embed(title="📥 Member Joined", color=discord.Color.green())
+        log_embed.add_field(name="User", value=f"{member.mention} ({member.name})", inline=False)
+        await log_channel.send(embed=log_embed)
+
+@bot.event
+async def on_member_remove(member):
+    # Audit Log: Member Left
+    log_channel = bot.get_channel(AUDIT_LOG_CHANNEL_ID)
+    if log_channel:
+        log_embed = discord.Embed(title="📤 Member Left", color=discord.Color.dark_grey())
+        log_embed.add_field(name="User", value=f"{member.name}", inline=False)
+        await log_channel.send(embed=log_embed)
+
+# --- AUDIT LOG EVENTS (DELETED & EDITED MESSAGES) ---
+@bot.event
+async def on_message_delete(message):
+    if message.author.bot:
+        return
+    log_channel = bot.get_channel(AUDIT_LOG_CHANNEL_ID)
+    if log_channel:
+        embed = discord.Embed(title="🗑️ Message Deleted", color=discord.Color.red())
+        embed.add_field(name="User", value=message.author.mention, inline=True)
+        embed.add_field(name="Channel", value=message.channel.mention, inline=True)
+        embed.add_field(name="Content", value=message.content or "No Text / Attachment", inline=False)
+        await log_channel.send(embed=embed)
+
+@bot.event
+async def on_message_edit(before, after):
+    if before.author.bot or before.content == after.content:
+        return
+    log_channel = bot.get_channel(AUDIT_LOG_CHANNEL_ID)
+    if log_channel:
+        embed = discord.Embed(title="✏️ Message Edited", color=discord.Color.gold())
+        embed.add_field(name="User", value=before.author.mention, inline=True)
+        embed.add_field(name="Channel", value=before.channel.mention, inline=True)
+        embed.add_field(name="Before", value=before.content, inline=False)
+        embed.add_field(name="After", value=after.content, inline=False)
+        await log_channel.send(embed=embed)
 
 # --- AUTO MODERATION & MESSAGES ---
 @bot.event
