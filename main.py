@@ -538,22 +538,35 @@ async def purchasepanel(ctx):
     await ctx.message.delete()
     description_text = (
         "Welcome to **RATHORE X CHEATS**, your trusted source for premium modifications, tools, and exclusive services. Create a ticket below to receive fast support, purchase assistance, or answers to your questions.\n\n"
-        \n\n
+        "\u200b\n"
         "📌 **RULES**\n"
-        \n\n
+        "\u200b\n"
         "• Create tickets only for purchases, support, or legitimate inquiries.\n"
+        "\u200b\n"
         "• Creating tickets for fun, trolling, or wasting staff time will result in a ban.\n"
+        "\u200b\n"
         "• All prices are listed publicly. Do not create tickets to negotiate or bargain.\n"
+        "\u200b\n"
         "• Be respectful to staff members at all times.\n"
+        "\u200b\n"
         "• Do not spam, ping staff repeatedly, or create multiple tickets for the same issue.\n"
+        "\u200b\n"
         "• Payments must be completed through approved methods only.\n\n"
+        "\u200b\n"
         "🔥 **Why Choose RATHORE X CHEATS !!**\n"
+        "\u200b\n"
         "✓ Fast Support\n"
+        "\u200b\n"
         "✓ Secure Transactions\n"
+        "\u200b\n"
         "✓ Premium Quality Services\n"
+        "\u200b\n"
         "✓ Trusted Community\n"
+        "\u200b\n"
         "✓ Professional Assistance\n\n"
+        "\u200b\n"
         "Click the button below to create a ticket and get started.\n\n"
+        "\u200b\n"
         "👑 **RATHORE X CHEATS @2026 | by RATHORE !! |**"
     )
     embed = discord.Embed(description=description_text, color=discord.Color.from_rgb(88, 101, 242))
