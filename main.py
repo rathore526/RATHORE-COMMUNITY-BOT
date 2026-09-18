@@ -538,7 +538,9 @@ async def purchasepanel(ctx):
     await ctx.message.delete()
     description_text = (
         "Welcome to **RATHORE X CHEATS**, your trusted source for premium modifications, tools, and exclusive services. Create a ticket below to receive fast support, purchase assistance, or answers to your questions.\n\n"
+        
         "📌 **RULES**\n"
+        \n"
         "• Create tickets only for purchases, support, or legitimate inquiries.\n"
         "• Creating tickets for fun, trolling, or wasting staff time will result in a ban.\n"
         "• All prices are listed publicly. Do not create tickets to negotiate or bargain.\n"
