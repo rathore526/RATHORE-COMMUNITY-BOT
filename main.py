@@ -561,6 +561,8 @@ async def paymentpanel(ctx):
 async def supportpanel(ctx):
     await ctx.message.delete()
     description_text = (
+
+        "🛠️ **RATHORE X CHEATS — SUPPORT TICKET**\n"
         
         "Need help? Our support team is here to assist you with technical issues, account problems, product questions, or general inquiries.\n\n"
         "\n"
