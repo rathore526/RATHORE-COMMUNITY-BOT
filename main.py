@@ -33,28 +33,28 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 # ================= CONFIGURATION =================
 WELCOME_CHANNEL_ID = 1548746560626499636
-AUDIT_LOG_CHANNEL_ID = 1548751930665340989   # Server logs ID / Ticket Transcripts
+AUDIT_LOG_CHANNEL_ID = 1550511155464773652   # Server logs ID / Ticket Transcripts
 JOIN_LEAVE_CHANNEL_ID = 1548752079248691200  # Join-Leave logs ID
 MOD_LOG_CHANNEL_ID = 1548751987695296664     # Mod-logs ID
+TICKET_LOG_CHANNEL_ID = 1550532272011214919  # Ticket activity logs
 AUTO_ROLE_NAME = "→ Rathore Community"
 BAD_WORDS = ["rathore ke maa ke chut", "rathore randi", "rathore ke mummy", "rathore"]
-TARGET_USER_ID = 1529085822551326862  # Target / Owner ID with special security privileges
-TICKET_LOG_CHANNEL_ID = 1550532272011214919
+TARGET_USER_ID = 1529085822551326862          # Owner/Target User ID
 
 # 💳 PAYMENT DETAILS CONFIGURATION
 UPI_ID = "9818940367@fam"
 UPI_NAME = "Krishna"
-UPI_QR_URL = "https://cdn.discordapp.com/attachments/1548769995582869554/1550484011082850384/Screenshot_20260809-233235_FamApp.jpg?ex=6aae8042&is=6aad2ec2&hm=b165e0cfbae4a37e6627b329dcea72fbb2f0573703396fb4ff5b1f06307a9e1f&"
+UPI_QR_URL = "https://cdn.discordapp.com/attachments/1548769995582869554/1550484011082850384/Screenshot_20260809-233235_FamApp.jpg"
 
 BINANCE_ID = "123456789"
 BINANCE_NAME = "Rathore X Crypto"
 BINANCE_QR_URL = "https://your-image-url.com/binance_qr.png"
 
 # 🖼️ BANNER IMAGES LINKS
-BANNER_IMAGE_URL = "https://cdn.discordapp.com/attachments/1529086631536234637/1548913864811479070/WLCM.gif?ex=6aad6732&is=6aac15b2&hm=33843e4ad7963cecc2ed66f3e05c7f36db641f4cc2a45e120e2ddbdd3d0288ff&"
-PURCHASE_BANNER_URL = "https://media.discordapp.net/attachments/1548769995582869554/1550471469119574067/standard.gif?ex=6aae7494&is=6aad2314&hm=63659b85776fbed5f9a7bb2ed29587cc542062c55cc189e705f35996392d9497&=&width=640&height=360"
-SUPPORT_BANNER_URL = "https://cdn.discordapp.com/attachments/1529086631536234637/1548903192644026489/standard_2.gif?ex=6aad5d42&is=6aac0bc2&hm=f3ec8787fc33990e65cb180fde4ba00a66b4bd0ad7084f297f145f23f1f1ce78&"
-PAYMENT_BANNER_URL = "https://media.discordapp.net/attachments/1548769995582869554/1550488423511629914/standard_1.gif?ex=6aae845e&is=6aad32de&hm=6c150d2e91f7c55626853150851a4c029ba6372c705112e4ee222ca2c35caadf&="
+BANNER_IMAGE_URL = "https://cdn.discordapp.com/attachments/1529086631536234637/1548913864811479070/WLCM.gif"
+PURCHASE_BANNER_URL = "https://media.discordapp.net/attachments/1548769995582869554/1550471469119574067/standard.gif"
+SUPPORT_BANNER_URL = "https://cdn.discordapp.com/attachments/1529086631536234637/1548903192644026489/standard_2.gif"
+PAYMENT_BANNER_URL = "https://media.discordapp.net/attachments/1548769995582869554/1550488423511629914/standard_1.gif"
 
 # 🎫 TICKET CATEGORIES
 PURCHASE_CATEGORY_NAME = "🎫┃𝘗𝘜𝘙𝘊𝘏𝘈𝘚𝘌-𝘏𝘌𝘙𝘌"
@@ -71,8 +71,7 @@ class CloseButton(discord.ui.View):
     async def close_ticket(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.send_message("⚠️ Generating transcript & deleting ticket in 5 seconds...")
 
-        # Audit Log me File Save karne ka System
-        log_channel = interaction.guild.get_channel(1550511155464773652)
+        log_channel = interaction.guild.get_channel(AUDIT_LOG_CHANNEL_ID)
         if log_channel:
             messages = []
             async for msg in interaction.channel.history(limit=500, oldest_first=True):
@@ -112,29 +111,29 @@ class PurchaseDropdown(discord.ui.Select):
         selected_option = self.values[0]
         guild = interaction.guild
 
-        category = discord.utils.get(guild.categories, name="Tickets")
+        category = discord.utils.get(guild.categories, name=PURCHASE_CATEGORY_NAME)
+        if not category:
+            category = await guild.create_category(PURCHASE_CATEGORY_NAME)
+
         overwrites = {
             guild.default_role: discord.PermissionOverwrite(read_messages=False),
             interaction.user: discord.PermissionOverwrite(read_messages=True, send_messages=True),
             guild.me: discord.PermissionOverwrite(read_messages=True, send_messages=True)
         }
 
-        # 1. Ticket Channel banega
         ticket_channel = await guild.create_text_channel(
-            name=f"ticket-{interaction.user.name}",
+            name=f"ticket-{interaction.user.name.lower()}",
             overwrites=overwrites,
             category=category
         )
 
-        # 2. User ko reply aur ticket me welcome msg
         await interaction.response.send_message(f"✅ Ticket created: {ticket_channel.mention}", ephemeral=True)
         await ticket_channel.send(
             f"Welcome {interaction.user.mention}! Selected Option: **{selected_option}**",
             view=CloseButton()
         )
 
-        # 3. LOG CHANNEL ME NOTIFICATION (Yahan se add hua hai)
-        log_channel = guild.get_channel(1550532272011214919)
+        log_channel = guild.get_channel(TICKET_LOG_CHANNEL_ID)
         if log_channel:
             embed = discord.Embed(
                 title="🎟️ New Ticket Opened",
@@ -146,7 +145,12 @@ class PurchaseDropdown(discord.ui.Select):
             embed.add_field(name="📂 Ticket Channel", value=ticket_channel.mention, inline=True)
             embed.set_footer(text=f"User ID: {interaction.user.id}")
 
-            await log_channel.send(content=f"<@{1550532272011214919}>", embed=embed)
+            await log_channel.send(content=f"<@{TARGET_USER_ID}>", embed=embed)
+
+class PurchaseView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+        self.add_item(PurchaseDropdown())
 
 # --- 2. PAYMENT METHOD DROPDOWN ---
 class PaymentDropdown(discord.ui.Select):
@@ -429,7 +433,7 @@ async def on_member_ban(guild, user):
 
 @bot.event
 async def on_member_unban(guild, user):
-    mod_channel = bot.get_channel(1548751987695296664)
+    mod_channel = bot.get_channel(MOD_LOG_CHANNEL_ID)
     if mod_channel:
         embed = discord.Embed(title="🔓 Member Unbanned", color=discord.Color.green())
         embed.add_field(name="User", value=f"{user.mention} ({user.name})", inline=False)
@@ -442,14 +446,12 @@ async def on_message(message):
     if message.author == bot.user:
         return
 
-    # SIRF AAP (Target User ID) hi commands run kar sakte hain
-    if message.author.id != 1529085822551326862:
-        # Agar koi aur command (! prefix) run karne ki koshish kare toh block kar do
+    # SIRF Owner (Target User ID) hi commands run kar sakte hain
+    if message.author.id != TARGET_USER_ID:
         if message.content.startswith(bot.command_prefix):
             await message.channel.send(f"⚠️ {message.author.mention}, aapko yeh bot commands use karne ki permission nahi hai!", delete_after=5)
             return
 
-        # Normal users ke liye Automod Checks
         msg_content = message.content.lower()
 
         # 1. Invite Link Check
@@ -482,61 +484,29 @@ async def on_message(message):
                     print(f"Delete Error: {e}")
                 return
 
-    # Agar Message Aapka (Owner ka) hai, tabhi Command Process Hoga
     await bot.process_commands(message)
 
 # --- COMMANDS ---
-
 @bot.command()
 @commands.has_permissions(administrator=True)
 async def purchasepanel(ctx):
     await ctx.message.delete()
     description_text = (
         "Welcome to **RATHORE X CHEATS**, your trusted source for premium modifications, tools, and exclusive services. Create a ticket below to receive fast support, purchase assistance, or answers to your questions.\n\n"
-        "⠀\n"
         "📌 **RULES**\n"
-        "⠀\n"
         "• Create tickets only for purchases, support, or legitimate inquiries.\n"
-        "⠀\n"
         "• Creating tickets for fun, trolling, or wasting staff time will result in a ban.\n"
-        "⠀\n"
         "• All prices are listed publicly. Do not create tickets to negotiate or bargain.\n"
-        "⠀\n"
         "• Be respectful to staff members at all times.\n"
-        "⠀\n"
         "• Do not spam, ping staff repeatedly, or create multiple tickets for the same issue.\n"
-        "⠀\n"
         "• Payments must be completed through approved methods only.\n\n"
-        "⠀\n"
-        "📌 **REGRAS**\n"
-        "⠀\n"
-        "• Crie tickets apenas para compras, suporte ou dúvidas legítimas.\n"
-        "⠀\n"
-        "• Criar tickets por diversão, trollagem ou para desperdiçar o tempo da equipe resultará em banimento.\n"
-        "⠀\n"
-        "• Todos os preços já estão listados. Não abra tickets para negociar valores.\n"
-        "⠀\n"
-        "• Respeite os membros da equipe em todos os momentos.\n"
-        "⠀\n"
-        "• Não envie spam, mencione a equipe repetidamente ou crie vários tickets para o mesmo problema.\n"
-        "⠀\n"
-        "• Os pagamentos devem ser realizados apenas pelos métodos aprovados.\n\n"
-        "⠀\n"
-        "⠀\n"
         "🔥 **Why Choose RATHORE X CHEATS !!**\n"
-        "⠀\n"
         "✓ Fast Support\n"
-        "⠀\n"
         "✓ Secure Transactions\n"
-        "⠀\n"
         "✓ Premium Quality Services\n"
-        "⠀\n"
         "✓ Trusted Community\n"
-        "⠀\n"
         "✓ Professional Assistance\n\n"
-        "⠀\n"
         "Click the button below to create a ticket and get started.\n\n"
-        "⠀\n"
         "👑 **RATHORE X CHEATS @2026 | by RATHORE !! |**"
     )
     embed = discord.Embed(description=description_text, color=discord.Color.from_rgb(88, 101, 242))
@@ -550,50 +520,17 @@ async def purchasepanel(ctx):
 async def paymentpanel(ctx):
     await ctx.message.delete()
     description_text = (
-        "💳 **RATHORE X — PAYMENT METHODS**\n"
-        "\n"
+        "💳 **RATHORE X — PAYMENT METHODS**\n\n"
         "🔐 **SELECT YOUR PREFERRED PAYMENT METHOD**\n"
-        "⠀\n"
         "Choose any available payment option below to receive the complete payment details.\n\n"
-        "⠀\n"
-        "After completing your payment, upload/send your payment screenshot for verification.\n\n"
-        "⠀\n"
         "🇮🇳 **INDIAN PAYMENT METHODS**\n"
-        "⠀\n"
-        "• 📱 PhonePe\n"
-        "⠀\n"
-        "• 🟢 Google Pay\n"
-        "⠀\n"
-        "• 🔵 Paytm\n"
-        "⠀\n"
-        "• 🔳 UPI QR\n\n"
-        "⠀\n"
+        "• 📱 PhonePe / Paytm / Google Pay / UPI QR\n\n"
         "🟡 **CRYPTO PAYMENT METHODS**\n"
-        "⠀\n"
-        "• 🟡 Binance Pay\n"
-        "⠀\n"
-        "• 💰 USDT — TRC20\n"
-        "⠀\n"
-        "• 💰 USDT — BEP20\n"
-        "⠀\n"
-        "\n"
-        "📌 **PAYMENT INSTRUCTIONS**\n\n"
-        "⠀\n"
+        "• 🟡 Binance Pay / USDT (TRC20/BEP20)\n\n"
+        "📌 **PAYMENT INSTRUCTIONS**\n"
         "1. Select your preferred payment method.\n"
-        "⠀\n"
-        "2. Complete the payment using the provided details.\n"
-        "⠀\n"
-        "3. Take a clear screenshot of the successful payment.\n"
-        "⠀\n"
-        "4. Submit the screenshot for payment verification.\n"
-        "⠀\n"
-        "5. Wait for confirmation after your payment has been verified.\n\n"
-        "⠀\n"
-        "⚠️ **IMPORTANT:** Make sure the payment details are correct before sending any payment.\n"
-        "⠀\n"
-        "\n"
-        "🔥 **RATHORE X CHEATS @2026**\n"
-        "⠀\n"
+        "2. Complete payment & send clear screenshot + Transaction ID.\n"
+        "3. Wait for confirmation from staff.\n\n"
         "👑 **POWERED BY RATHORE !!**"
     )
     embed = discord.Embed(description=description_text, color=discord.Color.gold())
@@ -607,57 +544,12 @@ async def paymentpanel(ctx):
 async def supportpanel(ctx):
     await ctx.message.delete()
     description_text = (
-        "🛠️ **RATHORE X CHEATS — SUPPORT TICKET**\n"
-        "⠀\n"
-        "Need help? Our support team is here to assist you with technical issues, account problems, product questions, or general inquiries.\n\n"
-        "⠀\n"
-        "📌 **BEFORE CREATING A TICKET**\n"
-        "⠀\n"
-        "• Check the FAQ and available guides first.\n"
-        "⠀\n"
-        "• Make sure your issue has not already been answered.\n"
-        "⠀\n"
-        "• Gather any screenshots or error messages that may help our staff assist you faster.\n\n"
-        "⠀\n"
-        "⠀\n"
+        "🛠️ **RATHORE X CHEATS — SUPPORT TICKET**\n\n"
+        "Need help? Our support team is here to assist you with technical issues, account problems, or product questions.\n\n"
         "📌 **SUPPORT RULES**\n"
-        "⠀\n"
         "• Open tickets only for genuine support requests.\n"
-        "⠀\n"
-        "• Clearly explain your issue and provide relevant details.\n"
-        "⠀\n"
-        "• Be respectful and patient while waiting for a response.\n"
-        "⠀\n"
-        "• Do not spam messages, mentions, or create multiple tickets for the same issue.\n"
-        "⠀\n"
-        "• False reports, trolling, or misuse of the support system may result in a ban.\n\n"
-        "⠀\n"
-        "📌 **REGRAS DE SUPORTE**\n"
-        "⠀\n"
-        "• Abra tickets apenas para solicitações de suporte legítimas.\n"
-        "⠀\n"
-        "• Explique claramente seu problema e forneça detalhes relevantes.\n"
-        "⠀\n"
-        "• Seja respeitoso e paciente enquanto aguarda uma resposta.\n"
-        "⠀\n"
-        "• Não envie spam, marque a equipe repetidamente ou crie vários tickets para o mesmo problema.\n"
-        "⠀\n"
-        "• Relatórios falsos, trollagem ou abuso do sistema de suporte podem resultar em banimento.\n\n"
-        "⠀\n"
-        "🔥 **RATHORE X CHEATS SUPPORT**\n"
-        "⠀\n"
-        "✓ Technical Assistance\n"
-        "⠀\n"
-        "✓ Installation Help\n"
-        "⠀\n"
-        "✓ Account Support\n"
-        "⠀\n"
-        "✓ Product Information\n"
-        "⠀\n"
-        "✓ General Questions\n\n"
-        "⠀\n"
-        "Create a ticket below and a staff member will assist you as soon as possible.\n\n"
-        "⠀\n"
+        "• Clearly explain your issue with screenshots.\n"
+        "• Be respectful and patient while waiting for staff.\n\n"
         "👑 **RATHORE X CHEATS @2026 | by RATHORE !! |**"
     )
     embed = discord.Embed(description=description_text, color=discord.Color.from_rgb(57, 255, 20))
@@ -672,7 +564,7 @@ async def upi(ctx):
     await ctx.message.delete()
     embed = discord.Embed(
         title="💳 Indian Payment Details (UPI / QR)",
-        description=f"Send payment to the details below and share the **screenshot + Transaction ID** in this ticket.\n\n"
+        description=f"Send payment to details below and share **screenshot + Transaction ID**:\n\n"
                     f"🔹 **UPI ID:** `{UPI_ID}`\n"
                     f"🔹 **Payee Name:** {UPI_NAME}\n\n"
                     f"⚠️ *Payment complete hone ke baad screenshot zaroor bhejein!*",
@@ -689,7 +581,7 @@ async def binance(ctx):
     await ctx.message.delete()
     embed = discord.Embed(
         title="🟡 Binance / Crypto Payment Details",
-        description=f"Send payment using Binance Pay ID or Crypto address below. Share the **Transaction Hash / Screenshot** after completion.\n\n"
+        description=f"Send payment using Binance Pay ID or Crypto address:\n\n"
                     f"🔹 **Binance Pay ID / Address:** `{BINANCE_ID}`\n"
                     f"🔹 **Account Name:** {BINANCE_NAME}\n\n"
                     f"⚠️ *Double check the address before sending crypto!*",
