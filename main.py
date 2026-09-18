@@ -470,28 +470,46 @@ async def purchasepanel(ctx):
         
         "Welcome to **RATHORE X CHEATS**, your trusted source for premium modifications, tools, and exclusive services. Create a ticket below to receive fast support, purchase assistance, or answers to your questions.\n\n"
         "\n"
+        
         "📌 **RULES**\n\n"
         "• Create tickets only for purchases, support, or legitimate inquiries.\n"
+        
         "• Creating tickets for fun, trolling, or wasting staff time will result in a ban.\n"
+        
         "• All prices are listed publicly. Do not create tickets to negotiate or bargain.\n"
+        
         "• Be respectful to staff members at all times.\n"
+        
         "• Do not spam, ping staff repeatedly, or create multiple tickets for the same issue.\n"
+        
         "• Payments must be completed through approved methods only.\n\n"
         "\n"
         "📌 **REGRAS**\n\n"
+        
         "• Crie tickets apenas para compras, suporte ou dúvidas legítimas.\n"
+        
         "• Criar tickets por diversão, trollagem ou para desperdiçar o tempo da equipe resultará em banimento.\n"
+        
         "• Todos os preços já estão listados. Não abra tickets para negociar valores.\n"
+        
         "• Respeite os membros da equipe em todos os momentos.\n"
+        
         "• Não envie spam, mencione a equipe repetidamente ou crie vários tickets para o mesmo problema.\n"
+        
         "• Os pagamentos devem ser realizados apenas pelos métodos aprovados.\n\n"
         "\n"
         "🔥 **Why Choose RATHORE X CHEATS !!**\n\n"
+        
         "✓ Fast Support\n"
+        
         "✓ Secure Transactions\n"
+        
         "✓ Premium Quality Services\n"
+        
         "✓ Trusted Community\n"
+        
         "✓ Professional Assistance\n\n"
+        
         "Click the button below to create a ticket and get started.\n"
         "\n"
         "👑 **RATHORE X CHEATS @2026 | by RATHORE !! |**"
