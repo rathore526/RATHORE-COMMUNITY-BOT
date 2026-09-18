@@ -445,30 +445,47 @@ async def on_message(message):
     if message.author == bot.user:
         return
 
-    # SECURITY EXEMPTION: Owner aur Admins bypass karenge
-    if message.author.id == 1529085822551326862 or (isinstance(message.author, discord.Member) and message.author.guild_permissions.administrator):
-        await bot.process_commands(message)
-        return
-
-    msg_content = message.content.lower()
-
-    # --- AUTOMOD CHECKS FOR NORMAL USERS ---
-    
-    # 1. Invite Link Check
-    discord_invite_pattern = r"(discord\.gg|discord\.com/invite)/[a-zA-Z0-9]+"
-    if re.search(discord_invite_pattern, msg_content):
-        await message.delete()
-        await message.channel.send(f"⚠️ {message.author.mention}, invite links allowed nahi hain!", delete_after=5)
-        return
-
-    # 2. Bad Words Check
-    for word in BAD_WORDS:
-        if word in msg_content:
-            await message.delete()
-            await message.channel.send(f"⚠️ {message.author.mention}, bad words allowed nahi hain!", delete_after=5)
+    # SIRF AAP (Target User ID) hi commands run kar sakte hain
+    if message.author.id != 1529085822551326862:
+        # Agar koi aur command (! prefix) run karne ki koshish kare toh block kar do
+        if message.content.startswith(bot.command_prefix):
+            await message.channel.send(f"⚠️ {message.author.mention}, aapko yeh bot commands use karne ki permission nahi hai!", delete_after=5)
             return
 
-    # IMPORTANT: Normal users ke commands process karne ke liye yeh line zaruri hai
+        # Normal users ke liye Automod Checks
+        msg_content = message.content.lower()
+
+        # 1. Invite Link Check
+        discord_invite_pattern = r"(discord\.gg|discord\.com/invite)/[a-zA-Z0-9]+"
+        if re.search(discord_invite_pattern, msg_content):
+            try:
+                await message.delete()
+                await message.channel.send(f"⚠️ {message.author.mention}, invite links allowed nahi hain!", delete_after=5)
+            except Exception as e:
+                print(f"Delete Error: {e}")
+            return
+
+        # 2. Owner Mention / Ping Check
+        user_tagged = any(user.id == TARGET_USER_ID for user in message.mentions)
+        if user_tagged or message.mention_everyone:
+            try:
+                await message.delete()
+                await message.channel.send(f"⚠️ {message.author.mention}, owner ko ping nahi kar sakte!", delete_after=5)
+            except Exception as e:
+                print(f"Delete Error: {e}")
+            return
+
+        # 3. Bad Words Check
+        for word in BAD_WORDS:
+            if word in msg_content:
+                try:
+                    await message.delete()
+                    await message.channel.send(f"⚠️ {message.author.mention}, bad words allowed nahi hain!", delete_after=5)
+                except Exception as e:
+                    print(f"Delete Error: {e}")
+                return
+
+    # Agar Message Aapka (Owner ka) hai, tabhi Command Process Hoga
     await bot.process_commands(message)
 
 # --- COMMANDS ---
