@@ -485,11 +485,31 @@ async def purchasepanel(ctx):
 async def paymentpanel(ctx):
     await ctx.message.delete()
     description_text = (
-        "**RATHORE X — PAYMENT METHODS**\n\n"
-        "Select your preferred payment method below to get payment details and submit your payment screenshot.\n\n"
-        "🇮🇳 **Indian Payment:** PhonePe, Google Pay, Paytm, UPI QR\n"
-        "🟡 **Crypto Payment:** Binance Pay, USDT (TRC20/BEP20)\n\n"
-        "**RATHORE X CHEATS @2026 |by RATHORE !! |**"
+        "💳 **RATHORE X — PAYMENT METHODS**\n"
+        "━━━━━━━━━━━━━━━━━━━━\n"
+        "🔐 **SELECT YOUR PREFERRED PAYMENT METHOD**\n"
+        "Choose any available payment option below to receive the complete payment details.\n\n"
+        "After completing your payment, upload/send your payment screenshot for verification.\n\n"
+        "🇮🇳 **INDIAN PAYMENT METHODS**\n"
+        "• 📱 PhonePe\n"
+        "• 🟢 Google Pay\n"
+        "• 🔵 Paytm\n"
+        "• 🔳 UPI QR\n\n"
+        "🟡 **CRYPTO PAYMENT METHODS**\n"
+        "• 🟡 Binance Pay\n"
+        "• 💰 USDT — TRC20\n"
+        "• 💰 USDT — BEP20\n"
+        "━━━━━━━━━━━━━━━━━━━━\n"
+        "📌 **PAYMENT INSTRUCTIONS**\n\n"
+        "1. Select your preferred payment method.\n"
+        "2. Complete the payment using the provided details.\n"
+        "3. Take a clear screenshot of the successful payment.\n"
+        "4. Submit the screenshot for payment verification.\n"
+        "5. Wait for confirmation after your payment has been verified.\n\n"
+        "⚠️ **IMPORTANT:** Make sure the payment details are correct before sending any payment.\n"
+        "━━━━━━━━━━━━━━━━━━━━\n"
+        "🔥 **RATHORE X CHEATS @2026**\n"
+        "👑 **POWERED BY RATHORE !!**"
     )
     embed = discord.Embed(description=description_text, color=discord.Color.gold())
     embed.set_footer(text="Powered by Owner 1nonlyrathore8")
