@@ -39,6 +39,7 @@ MOD_LOG_CHANNEL_ID = 1548751987695296664     # Mod-logs ID
 AUTO_ROLE_NAME = "→ Rathore Community"
 BAD_WORDS = ["rathore ke maa ke chut", "rathore randi", "rathore ke mummy", "rathore"]
 TARGET_USER_ID = 1529085822551326862  # Target / Owner ID with special security privileges
+TICKET_LOG_CHANNEL_ID = 1550532272011214919
 
 # 💳 PAYMENT DETAILS CONFIGURATION
 UPI_ID = "9818940367@fam"
@@ -108,48 +109,44 @@ class PurchaseDropdown(discord.ui.Select):
         )
 
     async def callback(self, interaction: discord.Interaction):
-        await interaction.response.defer(ephemeral=True)
-
-        guild = interaction.guild
-        member = interaction.user
         selected_option = self.values[0]
+        guild = interaction.guild
 
-        category = discord.utils.get(guild.categories, name=PURCHASE_CATEGORY_NAME)
-        if not category:
-            category = await guild.create_category(PURCHASE_CATEGORY_NAME)
-
-        channel_name = f"buy-{member.name.lower()}"
-        existing_channel = discord.utils.get(guild.channels, name=channel_name)
-
-        if existing_channel:
-            await interaction.followup.send(f"❌ Aapka ticket pehle se khula hai: {existing_channel.mention}", ephemeral=True)
-            return
-
+        category = discord.utils.get(guild.categories, name="Tickets")
         overwrites = {
             guild.default_role: discord.PermissionOverwrite(read_messages=False),
-            member: discord.PermissionOverwrite(read_messages=True, send_messages=True),
+            interaction.user: discord.PermissionOverwrite(read_messages=True, send_messages=True),
             guild.me: discord.PermissionOverwrite(read_messages=True, send_messages=True)
         }
 
+        # 1. Ticket Channel banega
         ticket_channel = await guild.create_text_channel(
-            name=channel_name,
-            category=category,
-            overwrites=overwrites
+            name=f"ticket-{interaction.user.name}",
+            overwrites=overwrites,
+            category=category
         )
 
-        embed = discord.Embed(
-            title=f"🛒 Purchase Ticket: {selected_option}",
-            description=f"Hello {member.mention}, welcome! Please wait for staff to share product details or type your query.",
-            color=discord.Color.from_rgb(88, 101, 242)
+        # 2. User ko reply aur ticket me welcome msg
+        await interaction.response.send_message(f"✅ Ticket created: {ticket_channel.mention}", ephemeral=True)
+        await ticket_channel.send(
+            f"Welcome {interaction.user.mention}! Selected Option: **{selected_option}**",
+            view=CloseButton()
         )
 
-        await ticket_channel.send(content=f"{member.mention}", embed=embed, view=CloseButton())
-        await interaction.followup.send(f"✅ Aapka purchase ticket ban gaya hai: {ticket_channel.mention}", ephemeral=True)
+        # 3. LOG CHANNEL ME NOTIFICATION (Yahan se add hua hai)
+        log_channel = guild.get_channel(TICKET_LOG_CHANNEL_ID)
+        if log_channel:
+            embed = discord.Embed(
+                title="🎟️ New Ticket Opened",
+                color=discord.Color.green(),
+                timestamp=discord.utils.utcnow()
+            )
+            embed.add_field(name="👤 Opened By", value=f"{interaction.user.mention} (`{interaction.user.id}`)", inline=False)
+            embed.add_field(name="🏷️ Option Selected", value=selected_option, inline=True)
+            embed.add_field(name="📂 Ticket Channel", value=ticket_channel.mention, inline=True)
+            embed.set_footer(text=f"User ID: {interaction.user.id}")
 
-class PurchaseView(discord.ui.View):
-    def __init__(self):
-        super().__init__(timeout=None)
-        self.add_item(PurchaseDropdown())
+            await log_channel.send(content=f"<@{TARGET_USER_ID}>", embed=embed)
 
 # --- 2. PAYMENT METHOD DROPDOWN ---
 class PaymentDropdown(discord.ui.Select):
