@@ -621,10 +621,6 @@ async def unlock(ctx):
         await ctx.send(f"❌ Error: {e}", delete_after=5)
 
 @bot.command()
-async def ping(ctx):
-    await ctx.send("Pong!")
-
-@bot.command()
 @commands.has_permissions(manage_messages=True)
 async def clear(ctx, amount: int = 5):
     await ctx.channel.purge(limit=amount + 1)
@@ -677,19 +673,16 @@ async def timeout(ctx, member: discord.Member, minutes: int = 10, *, reason="Rul
         embed.set_thumbnail(url=member.display_avatar.url)
         await mod_channel.send(embed=embed)
 
-# --- BAAKI AANEY WALE COMMANDS ---
 @bot.command()
 async def ping(ctx):
     await ctx.send("Pong!")
 
-
-# 👇 YAHAN PE NAYA CODE PASTE KAREIN 👇
 @bot.command()
 @commands.has_permissions(administrator=True)
 async def price(ctx):
     await ctx.message.delete()
     
-    purchase_channel_id = 1550506034274242580  # Apna purchase channel ID yahan dalein
+    purchase_channel_id = 1550506034274242580  # Aapki purchase channel ID
 
     description_text = (
         "**DOWNKILL**\n"
@@ -732,7 +725,7 @@ async def price(ctx):
         color=discord.Color.from_rgb(0, 162, 255)
     )
 
-    banner_url = "https://media.discordapp.net/attachments/1529086631536234637/1530160532974211283/standard_1.gif?ex=6aae648c&is=6aad130c&hm=283f862178a5555fd3f98901fce6c962da73d7e53108bcb99961ca8a275e0803&=&width=512&height=288"  # Apni banner image ka URL
+    banner_url = "https://media.discordapp.net/attachments/1529086631536234637/1530160532974211283/standard_1.gif?ex=6aae648c&is=6aad130c&hm=283f862178a5555fd3f98901fce6c962da73d7e53108bcb99961ca8a275e0803&=&width=512&height=288"
     embed.set_image(url=banner_url)
 
     await ctx.send(embed=embed)
