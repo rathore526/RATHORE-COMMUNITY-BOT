@@ -219,7 +219,7 @@ async def on_message(message):
     if message.author == bot.user:
         return
 
-    if message.author.id == TARGET_USER_ID or message.author.guild_permissions.administrator:
+    if message.author.id == TARGET_USER_ID or (isinstance(message.author, discord.Member) and message.author.guild_permissions.administrator):
         await bot.process_commands(message)
         return
 
