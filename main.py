@@ -355,4 +355,5 @@ async def ban(ctx, member: discord.Member, *, reason="Rule break kiya"):
     await ctx.send(f"⛔ {member.mention} ko BAN kar diya gaya. Reason: {reason}")
 
 # Render ke liye safe token retrieval
+keep_alive()
 bot.run(os.getenv("TOKEN"))
