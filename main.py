@@ -99,7 +99,7 @@ class PurchaseDropdown(discord.ui.Select):
 
         channel_name = f"buy-{member.name.lower()}"
         existing_channel = discord.utils.get(guild.channels, name=channel_name)
-        
+
         if existing_channel:
             await interaction.followup.send(f"❌ Aapka ticket pehle se khula hai: {existing_channel.mention}", ephemeral=True)
             return
@@ -121,7 +121,7 @@ class PurchaseDropdown(discord.ui.Select):
             description=f"Hello {member.mention}, welcome! Please wait for staff to share product details or type your query.",
             color=discord.Color.from_rgb(88, 101, 242)
         )
-        
+
         await ticket_channel.send(content=f"{member.mention}", embed=embed, view=CloseButton())
         await interaction.followup.send(f"✅ Aapka purchase ticket ban gaya hai: {ticket_channel.mention}", ephemeral=True)
 
@@ -160,7 +160,7 @@ class PaymentDropdown(discord.ui.Select):
 
         channel_name = f"{prefix}-{member.name.lower()}"
         existing_channel = discord.utils.get(guild.channels, name=channel_name)
-        
+
         if existing_channel:
             await interaction.followup.send(f"❌ Aapka payment ticket pehle se khula hai: {existing_channel.mention}", ephemeral=True)
             return
@@ -182,7 +182,7 @@ class PaymentDropdown(discord.ui.Select):
             description=f"Hello {member.mention}, welcome!\n\nStaff will send payment details shortly. You can also use `!upi` or `!binance` command here.",
             color=discord.Color.gold()
         )
-        
+
         await ticket_channel.send(content=f"{member.mention}", embed=embed, view=CloseButton())
         await interaction.followup.send(f"✅ Aapka payment ticket ban gaya hai: {ticket_channel.mention}", ephemeral=True)
 
@@ -220,7 +220,7 @@ class SupportDropdown(discord.ui.Select):
 
         channel_name = f"support-{member.name.lower()}"
         existing_channel = discord.utils.get(guild.channels, name=channel_name)
-        
+
         if existing_channel:
             await interaction.followup.send(f"❌ Aapka support ticket pehle se khula hai: {existing_channel.mention}", ephemeral=True)
             return
@@ -242,7 +242,7 @@ class SupportDropdown(discord.ui.Select):
             description=f"Hello {member.mention}, welcome to Support! Please explain your issue, and our staff team will assist you shortly.",
             color=discord.Color.from_rgb(57, 255, 20)
         )
-        
+
         await ticket_channel.send(content=f"{member.mention}", embed=embed, view=CloseButton())
         await interaction.followup.send(f"✅ Aapka support ticket ban gaya hai: {ticket_channel.mention}", ephemeral=True)
 
@@ -463,44 +463,16 @@ async def on_message(message):
 
 @bot.command()
 @commands.has_permissions(administrator=True)
-async def paymentpanel(ctx):
+async def purchasepanel(ctx):
     await ctx.message.delete()
-    
     description_text = (
-        "💳 **RATHORE X — PAYMENT METHODS**\n"
+        "💳 **RATHORE X — PURCHASE METHOD**\n"
         "━━━━━━━━━━━━━━━━━━━━\n"
-        "🔐 **SELECT YOUR PREFERRED PAYMENT METHOD**\n"
-        "Choose any available payment option below to receive the complete payment details.\n\n"
-        "After completing your payment, upload/send your payment screenshot for verification.\n\n"
-        "🇮🇳 **INDIAN PAYMENT METHODS**\n"
-        "• 📱 PhonePe\n"
-        "• 🟢 Google Pay\n"
-        "• 🔵 Paytm\n"
-        "• 🔳 UPI QR\n\n"
-        "🟡 **CRYPTO PAYMENT METHODS**\n"
-        "• 🟡 Binance Pay\n"
-        "• 💰 USDT — TRC20\n"
-        "• 💰 USDT — BEP20\n"
-        "━━━━━━━━━━━━━━━━━━━━\n"
-        "📌 **PAYMENT INSTRUCTIONS**\n\n"
-        "1. Select your preferred payment method.\n"
-        "2. Complete the payment using the provided details.\n"
-        "3. Take a clear screenshot of the successful payment.\n"
-        "4. Submit the screenshot for payment verification.\n"
-        "5. Wait for confirmation after your payment has been verified.\n\n"
-        "⚠️ **IMPORTANT:** Make sure the payment details are correct before sending any payment.\n"
+        "🔐 **SELECT YOUR PREFERRED PURCHASE OPTION**\n"
+        "Choose any available option below to open a purchase ticket.\n\n"
         "━━━━━━━━━━━━━━━━━━━━\n"
         "🔥 **RATHORE X CHEATS @2026**\n"
         "👑 **POWERED BY RATHORE !!**"
-    )
-    
-    embed = discord.Embed(description=description_text, color=discord.Color.gold())
-    embed.set_footer(text="Powered by Owner 1nonlyrathore8")
-    
-    if PAYMENT_BANNER_URL:
-        embed.set_image(url=PAYMENT_BANNER_URL)
-        
-    await ctx.send(embed=embed, view=PaymentView())"
     )
     embed = discord.Embed(description=description_text, color=discord.Color.from_rgb(88, 101, 242))
     embed.set_footer(text="Powered by Owner 1nonlyrathore8")
@@ -617,7 +589,7 @@ async def clear(ctx, amount: int = 5):
 async def kick(ctx, member: discord.Member, *, reason="Koyi reason nahi diya"):
     await member.kick(reason=reason)
     await ctx.send(f"🚨 {member.mention} ko kick kar diya gaya. Reason: {reason}")
-    
+
     mod_channel = bot.get_channel(MOD_LOG_CHANNEL_ID)
     if mod_channel:
         embed = discord.Embed(title="👢 Member Kicked", color=discord.Color.orange())
@@ -632,7 +604,7 @@ async def kick(ctx, member: discord.Member, *, reason="Koyi reason nahi diya"):
 async def ban(ctx, member: discord.Member, *, reason="Rule break kiya"):
     await member.ban(reason=reason)
     await ctx.send(f"⛔ {member.mention} ko BAN kar diya gaya. Reason: {reason}")
-    
+
     mod_channel = bot.get_channel(MOD_LOG_CHANNEL_ID)
     if mod_channel:
         embed = discord.Embed(title="🔨 Member Banned", color=discord.Color.dark_red())
@@ -648,7 +620,7 @@ async def timeout(ctx, member: discord.Member, minutes: int = 10, *, reason="Rul
     duration = datetime.timedelta(minutes=minutes)
     await member.timeout(duration, reason=reason)
     await ctx.send(f"⏳ {member.mention} ko {minutes} minute ke liye timeout kar diya gaya.")
-    
+
     mod_channel = bot.get_channel(MOD_LOG_CHANNEL_ID)
     if mod_channel:
         embed = discord.Embed(title="⏳ Member Timed Out", color=discord.Color.gold())
