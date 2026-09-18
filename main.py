@@ -25,6 +25,7 @@ import re
 intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
+intents.guilds = True  # Added to track Channel & Role events
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
@@ -241,7 +242,7 @@ async def on_member_remove(member):
         log_embed.set_thumbnail(url=member.display_avatar.url)
         await log_channel.send(embed=log_embed)
 
-# --- AUDIT LOG EVENTS (DELETED & EDITED MESSAGES) ---
+# --- AUDIT LOG EVENTS (DELETED & EDITED MESSAGES, ROLES, CHANNELS) ---
 @bot.event
 async def on_message_delete(message):
     if message.author.bot:
@@ -265,6 +266,66 @@ async def on_message_edit(before, after):
         embed.add_field(name="Channel", value=before.channel.mention, inline=True)
         embed.add_field(name="Before", value=before.content, inline=False)
         embed.add_field(name="After", value=after.content, inline=False)
+        await log_channel.send(embed=embed)
+
+@bot.event
+async def on_member_update(before, after):
+    if before.roles != after.roles:
+        log_channel = bot.get_channel(AUDIT_LOG_CHANNEL_ID)
+        if not log_channel:
+            return
+
+        added_roles = [role for role in after.roles if role not in before.roles]
+        removed_roles = [role for role in before.roles if role not in after.roles]
+
+        for role in added_roles:
+            embed = discord.Embed(title="🛡️ Role Given to Member", color=discord.Color.blue())
+            embed.add_field(name="User", value=after.mention, inline=True)
+            embed.add_field(name="Role Added", value=role.mention, inline=True)
+            embed.set_thumbnail(url=after.display_avatar.url)
+            await log_channel.send(embed=embed)
+
+        for role in removed_roles:
+            embed = discord.Embed(title="🛡️ Role Removed from Member", color=discord.Color.dark_orange())
+            embed.add_field(name="User", value=after.mention, inline=True)
+            embed.add_field(name="Role Removed", value=role.name, inline=True)
+            embed.set_thumbnail(url=after.display_avatar.url)
+            await log_channel.send(embed=embed)
+
+@bot.event
+async def on_guild_role_create(role):
+    log_channel = bot.get_channel(AUDIT_LOG_CHANNEL_ID)
+    if log_channel:
+        embed = discord.Embed(title="✨ New Role Created", color=discord.Color.green())
+        embed.add_field(name="Role Name", value=role.name, inline=True)
+        embed.add_field(name="Role ID", value=role.id, inline=True)
+        await log_channel.send(embed=embed)
+
+@bot.event
+async def on_guild_role_delete(role):
+    log_channel = bot.get_channel(AUDIT_LOG_CHANNEL_ID)
+    if log_channel:
+        embed = discord.Embed(title="🗑️ Role Deleted", color=discord.Color.red())
+        embed.add_field(name="Role Name", value=role.name, inline=True)
+        await log_channel.send(embed=embed)
+
+@bot.event
+async def on_guild_channel_create(channel):
+    log_channel = bot.get_channel(AUDIT_LOG_CHANNEL_ID)
+    if log_channel:
+        embed = discord.Embed(title="📁 New Channel Created", color=discord.Color.green())
+        embed.add_field(name="Channel Name", value=channel.name, inline=True)
+        embed.add_field(name="Type", value=str(channel.type).capitalize(), inline=True)
+        embed.add_field(name="Channel Mention", value=channel.mention if hasattr(channel, 'mention') else channel.name, inline=False)
+        await log_channel.send(embed=embed)
+
+@bot.event
+async def on_guild_channel_delete(channel):
+    log_channel = bot.get_channel(AUDIT_LOG_CHANNEL_ID)
+    if log_channel:
+        embed = discord.Embed(title="🗑️ Channel Deleted", color=discord.Color.red())
+        embed.add_field(name="Channel Name", value=channel.name, inline=True)
+        embed.add_field(name="Type", value=str(channel.type).capitalize(), inline=True)
         await log_channel.send(embed=embed)
 
 # --- MANUAL BAN & UNBAN EVENTS (MOD LOGS) ---
