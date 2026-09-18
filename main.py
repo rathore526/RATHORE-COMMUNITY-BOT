@@ -39,7 +39,7 @@ TARGET_USER_ID = 1529085822551326862
 
 # 🖼️ BANNER IMAGES LINKS
 BANNER_IMAGE_URL = "https://cdn.discordapp.com/attachments/1529086631536234637/1548913864811479070/WLCM.gif?ex=6aad6732&is=6aac15b2&hm=33843e4ad7963cecc2ed66f3e05c7f36db641f4cc2a45e120e2ddbdd3d0288ff&"
-PURCHASE_BANNER_URL = "https://cdn.discordapp.com/attachments/1529086631536234637/1548900220979384360/standard_1.gif?ex=6aad5a7d&is=6aac08fd&hm=bc910c34be1892cd2d791bd139d5764273b2b2c912d0bdae26cde127b4bbebbf&"
+PURCHASE_BANNER_URL = "https://media.discordapp.net/attachments/1548769995582869554/1550471469119574067/standard.gif?ex=6aae7494&is=6aad2314&hm=63659b85776fbed5f9a7bb2ed29587cc542062c55cc189e705f35996392d9497&=&width=640&height=360"
 SUPPORT_BANNER_URL = "https://cdn.discordapp.com/attachments/1529086631536234637/1548903192644026489/standard_2.gif?ex=6aad5d42&is=6aac0bc2&hm=f3ec8787fc33990e65cb180fde4ba00a66b4bd0ad7084f297f145f23f1f1ce78&"
 
 # 🎫 TICKET CATEGORIES
