@@ -146,7 +146,7 @@ class PurchaseDropdown(discord.ui.Select):
             embed.add_field(name="📂 Ticket Channel", value=ticket_channel.mention, inline=True)
             embed.set_footer(text=f"User ID: {interaction.user.id}")
 
-            await log_channel.send(content=f"<@{TARGET_USER_ID}>", embed=embed)
+            await log_channel.send(content=f"<@{1550532272011214919}>", embed=embed)
 
 # --- 2. PAYMENT METHOD DROPDOWN ---
 class PaymentDropdown(discord.ui.Select):
