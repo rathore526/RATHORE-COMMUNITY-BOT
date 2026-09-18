@@ -468,46 +468,48 @@ async def purchasepanel(ctx):
     description_text = (
         
         "Welcome to **RATHORE X CHEATS**, your trusted source for premium modifications, tools, and exclusive services. Create a ticket below to receive fast support, purchase assistance, or answers to your questions.\n\n"
-        "\n"
+
+        "⠀\n"
         
         "📌 **RULES**\n\n"
+        "⠀\n"
         "• Create tickets only for purchases, support, or legitimate inquiries.\n"
-        
+        "⠀\n"
         "• Creating tickets for fun, trolling, or wasting staff time will result in a ban.\n"
-        
+        "⠀\n"
         "• All prices are listed publicly. Do not create tickets to negotiate or bargain.\n"
-        
+        "⠀\n"
         "• Be respectful to staff members at all times.\n"
-        
+        "⠀\n"
         "• Do not spam, ping staff repeatedly, or create multiple tickets for the same issue.\n"
-        
+        "⠀\n"
         "• Payments must be completed through approved methods only.\n\n"
         "\n"
         "📌 **REGRAS**\n\n"
-        
+        "⠀\n"
         "• Crie tickets apenas para compras, suporte ou dúvidas legítimas.\n"
-        
+        "⠀\n"
         "• Criar tickets por diversão, trollagem ou para desperdiçar o tempo da equipe resultará em banimento.\n"
-        
+        "⠀\n"
         "• Todos os preços já estão listados. Não abra tickets para negociar valores.\n"
-        
+        "⠀\n"
         "• Respeite os membros da equipe em todos os momentos.\n"
-        
+        "⠀\n"
         "• Não envie spam, mencione a equipe repetidamente ou crie vários tickets para o mesmo problema.\n"
-        
+        "⠀\n"
         "• Os pagamentos devem ser realizados apenas pelos métodos aprovados.\n\n"
         "\n"
         "🔥 **Why Choose RATHORE X CHEATS !!**\n\n"
-        
+        "⠀\n"
         "✓ Fast Support\n"
-        
+        "⠀\n"
         "✓ Secure Transactions\n"
-        
+        "⠀\n"
         "✓ Premium Quality Services\n"
-        
+        "⠀\n"
         "✓ Trusted Community\n"
-        
-        "✓ Professional Assistance\n\n"
+        "⠀\n"
+        "✓" Professional Assistance\n\n"
         
         "Click the button below to create a ticket and get started.\n"
         "\n"
