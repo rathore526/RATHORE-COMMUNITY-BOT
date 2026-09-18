@@ -25,7 +25,7 @@ import re
 intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
-intents.guilds = True  # Added to track Channel & Role events
+intents.guilds = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
@@ -38,14 +38,25 @@ AUTO_ROLE_NAME = "→ Rathore Community"
 BAD_WORDS = ["rathore ke maa ke chut", "rathore randi", "rathore ke mummy", "rathore"]
 TARGET_USER_ID = 1529085822551326862
 
+# 💳 PAYMENT DETAILS CONFIGURATION (Apni Details Yahan Change Karein)
+UPI_ID = "9818940367@fam"                        # Aapka UPI ID
+UPI_NAME = "Krishna"                      # Payee Name
+UPI_QR_URL = "https://cdn.discordapp.com/attachments/1548769995582869554/1550484011082850384/Screenshot_20260809-233235_FamApp.jpg?ex=6aae8042&is=6aad2ec2&hm=b165e0cfbae4a37e6627b329dcea72fbb2f0573703396fb4ff5b1f06307a9e1f&"    # Aapka UPI QR Code Image Link
+
+BINANCE_ID = "123456789"                          # Aapka Binance Pay ID / USDT Address
+BINANCE_NAME = "Rathore X Crypto"                 # Account Name
+BINANCE_QR_URL = "https://your-image-url.com/binance_qr.png"  # Binance QR Code Image Link
+
 # 🖼️ BANNER IMAGES LINKS
 BANNER_IMAGE_URL = "https://cdn.discordapp.com/attachments/1529086631536234637/1548913864811479070/WLCM.gif?ex=6aad6732&is=6aac15b2&hm=33843e4ad7963cecc2ed66f3e05c7f36db641f4cc2a45e120e2ddbdd3d0288ff&"
 PURCHASE_BANNER_URL = "https://media.discordapp.net/attachments/1548769995582869554/1550471469119574067/standard.gif?ex=6aae7494&is=6aad2314&hm=63659b85776fbed5f9a7bb2ed29587cc542062c55cc189e705f35996392d9497&=&width=640&height=360"
 SUPPORT_BANNER_URL = "https://cdn.discordapp.com/attachments/1529086631536234637/1548903192644026489/standard_2.gif?ex=6aad5d42&is=6aac0bc2&hm=f3ec8787fc33990e65cb180fde4ba00a66b4bd0ad7084f297f145f23f1f1ce78&"
+PAYMENT_BANNER_URL = "https://media.discordapp.net/attachments/1548769995582869554/1550471469119574067/standard.gif" # Aap chaho toh alag banner image link daal sakte ho
 
 # 🎫 TICKET CATEGORIES
 PURCHASE_CATEGORY_NAME = "🎫┃𝘗𝘜𝘙𝘊𝘏𝘈𝘚𝘌-𝘏𝘌𝘙𝘌"
 SUPPORT_CATEGORY_NAME = "🎟️┃𝘚𝘜𝘗𝘗𝘖𝘙𝘛"
+PAYMENT_CATEGORY_NAME = "💳┃𝘗𝘈𝘠𝘔𝘌𝘕𝘛-𝘔𝘌𝘛𝘏𝘖𝘋"
 # =================================================
 
 # --- CLOSE TICKET BUTTON ---
@@ -63,8 +74,8 @@ class CloseButton(discord.ui.View):
 class PurchaseDropdown(discord.ui.Select):
     def __init__(self):
         options = [
-            discord.SelectOption(label="Buy Cheats", description="Open ticket to buy premium cheats", emoji="🛒"),
-            discord.SelectOption(label="Inquire Price", description="Ask details about cheat pricing", emoji="💵"),
+            discord.SelectOption(label="Buy Cheat / Service", description="Open ticket to buy cheats or products", emoji="🛒"),
+            discord.SelectOption(label="Inquire Price / Support", description="Ask details about pricing", emoji="💵"),
         ]
         super().__init__(
             placeholder="Select a purchase option",
@@ -106,7 +117,7 @@ class PurchaseDropdown(discord.ui.Select):
 
         embed = discord.Embed(
             title=f"🛒 Purchase Ticket: {selected_option}",
-            description=f"Hello {member.mention}, welcome to the purchase section! Staff team will assist you shortly.",
+            description=f"Hello {member.mention}, welcome! Please wait for staff to share product details or type your query.",
             color=discord.Color.from_rgb(88, 101, 242)
         )
         
@@ -118,8 +129,71 @@ class PurchaseView(discord.ui.View):
         super().__init__(timeout=None)
         self.add_item(PurchaseDropdown())
 
+# --- 2. PAYMENT METHOD DROPDOWN (Dedicated Panel ke liye) ---
+class PaymentDropdown(discord.ui.Select):
+    def __init__(self):
+        options = [
+            discord.SelectOption(label="Indian Payment (UPI / QR)", description="Pay via PhonePe, Paytm, GPay, UPI QR", emoji="🇮🇳"),
+            discord.SelectOption(label="Binance / Crypto Payment", description="Pay via Binance Pay, USDT, Crypto", emoji="🟡"),
+        ]
+        super().__init__(
+            placeholder="Select your preferred Payment Method",
+            min_values=1,
+            max_values=1,
+            options=options,
+            custom_id="payment_dropdown_menu"
+        )
 
-# --- 2. SUPPORT TICKET DROPDOWN ---
+    async def callback(self, interaction: discord.Interaction):
+        await interaction.response.defer(ephemeral=True)
+
+        guild = interaction.guild
+        member = interaction.user
+        selected_option = self.values[0]
+
+        if "Indian Payment" in selected_option:
+            prefix = "upi"
+        else:
+            prefix = "crypto"
+
+        category = discord.utils.get(guild.categories, name=PAYMENT_CATEGORY_NAME)
+        if not category:
+            category = await guild.create_category(PAYMENT_CATEGORY_NAME)
+
+        channel_name = f"{prefix}-{member.name.lower()}"
+        existing_channel = discord.utils.get(guild.channels, name=channel_name)
+        
+        if existing_channel:
+            await interaction.followup.send(f"❌ Aapka payment ticket pehle se khula hai: {existing_channel.mention}", ephemeral=True)
+            return
+
+        overwrites = {
+            guild.default_role: discord.PermissionOverwrite(read_messages=False),
+            member: discord.PermissionOverwrite(read_messages=True, send_messages=True),
+            guild.me: discord.PermissionOverwrite(read_messages=True, send_messages=True)
+        }
+
+        ticket_channel = await guild.create_text_channel(
+            name=channel_name,
+            category=category,
+            overwrites=overwrites
+        )
+
+        embed = discord.Embed(
+            title=f"💳 Payment Ticket: {selected_option}",
+            description=f"Hello {member.mention}, welcome!\n\nStaff will send payment details shortly. You can also use `!upi` or `!binance` command here.",
+            color=discord.Color.gold()
+        )
+        
+        await ticket_channel.send(content=f"{member.mention}", embed=embed, view=CloseButton())
+        await interaction.followup.send(f"✅ Aapka payment ticket ban gaya hai: {ticket_channel.mention}", ephemeral=True)
+
+class PaymentView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+        self.add_item(PaymentDropdown())
+
+# --- 3. SUPPORT TICKET DROPDOWN ---
 class SupportDropdown(discord.ui.Select):
     def __init__(self):
         options = [
@@ -184,6 +258,7 @@ class SupportView(discord.ui.View):
 @bot.event
 async def on_ready():
     bot.add_view(PurchaseView())
+    bot.add_view(PaymentView())
     bot.add_view(SupportView())
     bot.add_view(CloseButton())
     print(f"🛡️ {bot.user} Rathore X Cheats Bot Online Hai!")
@@ -218,7 +293,7 @@ async def on_member_join(member):
             embed.set_image(url=BANNER_IMAGE_URL)
         await channel.send(content=content_text, embed=embed)
 
-    # Join Log Message (Join-Leave Channel)
+    # Join Log Message
     log_channel = bot.get_channel(JOIN_LEAVE_CHANNEL_ID)
     if log_channel:
         log_embed = discord.Embed(
@@ -231,7 +306,6 @@ async def on_member_join(member):
 
 @bot.event
 async def on_member_remove(member):
-    # Leave Log Message (Join-Leave Channel)
     log_channel = bot.get_channel(JOIN_LEAVE_CHANNEL_ID)
     if log_channel:
         log_embed = discord.Embed(
@@ -242,7 +316,7 @@ async def on_member_remove(member):
         log_embed.set_thumbnail(url=member.display_avatar.url)
         await log_channel.send(embed=log_embed)
 
-# --- AUDIT LOG EVENTS (DELETED & EDITED MESSAGES, ROLES, CHANNELS) ---
+# --- AUDIT LOG EVENTS ---
 @bot.event
 async def on_message_delete(message):
     if message.author.bot:
@@ -328,7 +402,7 @@ async def on_guild_channel_delete(channel):
         embed.add_field(name="Type", value=str(channel.type).capitalize(), inline=True)
         await log_channel.send(embed=embed)
 
-# --- MANUAL BAN & UNBAN EVENTS (MOD LOGS) ---
+# --- MOD LOGS ---
 @bot.event
 async def on_member_ban(guild, user):
     mod_channel = bot.get_channel(MOD_LOG_CHANNEL_ID)
@@ -390,23 +464,14 @@ async def on_message(message):
 
 # --- COMMANDS ---
 
+# 1. Purchase Panel
 @bot.command()
 @commands.has_permissions(administrator=True)
 async def ticketpanel(ctx):
     await ctx.message.delete()
     description_text = (
         "**RATHORE X — PURCHASE CENTER**\n\n"
-        "Welcome to RATHORE X CHEATS, your trusted source for premium modifications, tools, and exclusive services. Create a ticket below to receive fast support, purchase assistance, or answers to your questions.\n\n"
-        "**RULES**\n\n"
-        "• Create tickets only for purchases, support, or legitimate inquiries.\n\n"
-        "• Creating tickets for fun, trolling, or wasting staff time will result in a ban.\n\n"
-        "• All prices are listed publicly. Do not create tickets to negotiate or bargain.\n\n"
-        "• Be respectful to staff members at all times.\n\n"
-        "• Do not spam, ping staff repeatedly, or create multiple tickets for the same issue.\n\n"
-        "• Payments must be completed through approved methods only.\n\n"
-        "**Why Choose RATHORE X CHEATS !!**\n\n"
-        "✓ Fast Support\n✓ Secure Transactions\n✓ Premium Quality Services\n✓ Trusted Community\n✓ Professional Assistance\n\n"
-        "Click the dropdown menu below to create a ticket and get started.\n\n"
+        "Welcome to RATHORE X CHEATS. Select an option below to buy products or make inquiries.\n\n"
         "**RATHORE X CHEATS @2026 |by RATHORE !! |**"
     )
     embed = discord.Embed(description=description_text, color=discord.Color.from_rgb(88, 101, 242))
@@ -415,21 +480,32 @@ async def ticketpanel(ctx):
         embed.set_image(url=PURCHASE_BANNER_URL)
     await ctx.send(embed=embed, view=PurchaseView())
 
+# 2. Payment Panel (Dedicated Channel Command)
+@bot.command()
+@commands.has_permissions(administrator=True)
+async def paymentpanel(ctx):
+    await ctx.message.delete()
+    description_text = (
+        "**RATHORE X — PAYMENT METHODS**\n\n"
+        "Select your preferred payment method below to get payment details and submit your payment screenshot.\n\n"
+        "🇮🇳 **Indian Payment:** PhonePe, Google Pay, Paytm, UPI QR\n"
+        "🟡 **Crypto Payment:** Binance Pay, USDT (TRC20/BEP20)\n\n"
+        "**RATHORE X CHEATS @2026 |by RATHORE !! |**"
+    )
+    embed = discord.Embed(description=description_text, color=discord.Color.gold())
+    embed.set_footer(text="Powered by Owner 1nonlyrathore8")
+    if PAYMENT_BANNER_URL:
+        embed.set_image(url=PAYMENT_BANNER_URL)
+    await ctx.send(embed=embed, view=PaymentView())
+
+# 3. Support Panel
 @bot.command()
 @commands.has_permissions(administrator=True)
 async def supportpanel(ctx):
     await ctx.message.delete()
     description_text = (
         "**RATHORE X CHEATS — SUPPORT TICKET**\n\n"
-        "Need help? Our support team is here to assist you with technical issues, account problems, product questions, or general inquiries.\n\n"
-        "**SUPPORT RULES**\n\n"
-        "• Open tickets only for genuine support requests.\n\n"
-        "• Clearly explain your issue and provide relevant details.\n\n"
-        "• Be respectful and patient while waiting for a response.\n\n"
-        "• Do not spam messages, mentions, or create multiple tickets for the same issue.\n\n"
-        "**RATHORE X CHEATS SUPPORT**\n\n"
-        "✓ Technical Assistance\n✓ Installation Help\n✓ Account Support\n✓ Product Information\n✓ General Questions\n\n"
-        "Create a ticket below and a staff member will assist you as soon as possible.\n\n"
+        "Need help? Create a ticket below and a staff member will assist you.\n\n"
         "**RATHORE X CHEATS @2026 |by RATHORE !! |**"
     )
     embed = discord.Embed(description=description_text, color=discord.Color.from_rgb(57, 255, 20))
@@ -437,6 +513,41 @@ async def supportpanel(ctx):
     if SUPPORT_BANNER_URL:
         embed.set_image(url=SUPPORT_BANNER_URL)
     await ctx.send(embed=embed, view=SupportView())
+
+# --- PAYMENT COMMANDS FOR STAFF ---
+@bot.command()
+@commands.has_permissions(administrator=True)
+async def upi(ctx):
+    await ctx.message.delete()
+    embed = discord.Embed(
+        title="💳 Indian Payment Details (UPI / QR)",
+        description=f"Send payment to the details below and share the **screenshot + Transaction ID** in this ticket.\n\n"
+                    f"🔹 **UPI ID:** `{UPI_ID}`\n"
+                    f"🔹 **Payee Name:** {UPI_NAME}\n\n"
+                    f"⚠️ *Payment complete hone ke baad screenshot zaroor bhejein!*",
+        color=discord.Color.green()
+    )
+    if UPI_QR_URL and UPI_QR_URL != "https://your-image-url.com/qr.png":
+        embed.set_image(url=UPI_QR_URL)
+    embed.set_footer(text="Rathore X Cheats | Secure Payment System")
+    await ctx.send(embed=embed)
+
+@bot.command()
+@commands.has_permissions(administrator=True)
+async def binance(ctx):
+    await ctx.message.delete()
+    embed = discord.Embed(
+        title="🟡 Binance / Crypto Payment Details",
+        description=f"Send payment using Binance Pay ID or Crypto address below. Share the **Transaction Hash / Screenshot** after completion.\n\n"
+                    f"🔹 **Binance Pay ID / Address:** `{BINANCE_ID}`\n"
+                    f"🔹 **Account Name:** {BINANCE_NAME}\n\n"
+                    f"⚠️ *Double check the address before sending crypto!*",
+        color=discord.Color.gold()
+    )
+    if BINANCE_QR_URL and BINANCE_QR_URL != "https://your-image-url.com/binance_qr.png":
+        embed.set_image(url=BINANCE_QR_URL)
+    embed.set_footer(text="Rathore X Cheats | Crypto Payment System")
+    await ctx.send(embed=embed)
 
 @bot.command()
 @commands.has_permissions(manage_channels=True)
@@ -476,7 +587,7 @@ async def clear(ctx, amount: int = 5):
     await ctx.channel.purge(limit=amount + 1)
     await ctx.send(f"🧹 {amount} messages delete kar diye gaye!", delete_after=3)
 
-# --- MODERATION COMMANDS (LOGGED TO MOD_LOG_CHANNEL_ID) ---
+# --- MODERATION COMMANDS ---
 @bot.command()
 @commands.has_permissions(kick_members=True)
 async def kick(ctx, member: discord.Member, *, reason="Koyi reason nahi diya"):
@@ -524,6 +635,5 @@ async def timeout(ctx, member: discord.Member, minutes: int = 10, *, reason="Rul
         embed.set_thumbnail(url=member.display_avatar.url)
         await mod_channel.send(embed=embed)
 
-# Render ke liye safe token retrieval
 keep_alive()
 bot.run(os.getenv("TOKEN"))
