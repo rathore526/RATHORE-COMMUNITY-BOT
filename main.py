@@ -677,6 +677,66 @@ async def timeout(ctx, member: discord.Member, minutes: int = 10, *, reason="Rul
         embed.set_thumbnail(url=member.display_avatar.url)
         await mod_channel.send(embed=embed)
 
+# --- BAAKI AANEY WALE COMMANDS ---
+@bot.command()
+async def ping(ctx):
+    await ctx.send("Pong!")
+
+
+# 👇 YAHAN PE NAYA CODE PASTE KAREIN 👇
+@bot.command()
+@commands.has_permissions(administrator=True)
+async def price(ctx):
+    await ctx.message.delete()
+    
+    purchase_channel_id = 1550506034274242580  # Apna purchase channel ID yahan dalein
+
+    description_text = (
+        "**DOWNKILL**\n"
+        "EXECUTER\n"
+        "UPWARD DYNEX [ 200X ]\n"
+        "TELEPORT PLAYER\n"
+        "UPCOMING AUTO TELEPORT\n"
+        "UPCOMING JUMP REVISER\n"
+        "LOCK POSITION\n"
+        "BASE BREAKER\n"
+        "GHOST HACK\n"
+        "SHAKE KILL\n\n"
+        
+        "**GLOBAL FEATURES**\n\n"
+        "SPEED JOYSTICK\n"
+        "SPEED SCALER\n"
+        "NIGHT MODE\n"
+        "LOOK & EMOTE CHANGER\n"
+        "11+ PREMIUM LOOK CHANGERS\n"
+        "7+ PREMIUM EMOTE CHANGERS\n"
+        "MORE THAN 40+ FEATURES\n\n"
+        
+        "**SETTING FEATURES**\n\n"
+        "RESET GUEST\n"
+        "KEYBIND SUPPORT\n"
+        "TOPMOST SUPPORT\n"
+        "THEME SUPPORT\n"
+        "MORE THAN 40+ FEATURES\n\n"
+        "**PRICES :**\n\n"
+        "**1 DAYS - 140 INR | 1.60 USD**\n"
+        "**7 DAYS - 600 INR | 7 USD**\n"
+        "**30 DAYS - 1800 INR | 20 USD**\n"
+        "**LIFETIME - 4500 INR | 40 USD**\n\n"
+        
+        f"**FOR PURCHASE** <#{1550506034274242580}>"
+    )
+
+    embed = discord.Embed(
+        description=description_text, 
+        color=discord.Color.from_rgb(0, 162, 255)
+    )
+
+    banner_url = "https://media.discordapp.net/attachments/1529086631536234637/1530160532974211283/standard_1.gif?ex=6aae648c&is=6aad130c&hm=283f862178a5555fd3f98901fce6c962da73d7e53108bcb99961ca8a275e0803&=&width=512&height=288"  # Apni banner image ka URL
+    embed.set_image(url=banner_url)
+
+    await ctx.send(embed=embed)
+
 # Keep Alive Run
 keep_alive()
 
