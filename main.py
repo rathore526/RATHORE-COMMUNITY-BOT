@@ -40,10 +40,17 @@ bot = commands.Bot(command_prefix="!", intents=intents, max_messages=10000)
 
 # ================= CONFIGURATION =================
 WELCOME_CHANNEL_ID = 1548746560626499636
-AUDIT_LOG_CHANNEL_ID = (1550511155464773652)
+AUDIT_LOG_CHANNEL_ID = 1550511155464773652
 JOIN_LEAVE_CHANNEL_ID = 1548752079248691200  # Join-Leave logs ID
 MOD_LOG_CHANNEL_ID = 1548751987695296664  # Mod-logs ID
 TICKET_LOG_CHANNEL_ID = 1550532272011214919  # Ticket activity logs
+TICKET_TRANSCRIPT_LOG_ID = 1550812185679368283  # Ticket transcript logs
+
+# 📌 TICKET OPEN CHANNELS (Aapki Ticket Open Channel ID)
+PURCHASE_TICKET_CHANNEL_ID = 1550532272011214919
+SUPPORT_TICKET_CHANNEL_ID = 1550532272011214919
+PAYMENT_TICKET_CHANNEL_ID = 1550532272011214919
+
 AUTO_ROLE_NAME = "→ Rathore Community"
 BAD_WORDS = ["rathore ke maa ke chut", "rathore randi", "rathore ke mummy"]
 TARGET_USER_ID = 1529085822551326862  # Owner/Target User ID
@@ -68,11 +75,9 @@ PURCHASE_CATEGORY_NAME = "🎫┃𝘗𝘜𝘙𝘊𝘏𝘈𝘚𝘌-𝘏𝘌𝘙�
 SUPPORT_CATEGORY_NAME = "🎟️┃𝘚𝘜𝘗𝘗𝘖𝘙𝘛"
 PAYMENT_CATEGORY_NAME = "💳┃𝘗𝘈𝘠𝘔𝘌𝘕𝘛-𝘔𝘌𝘛𝘏𝘖𝘋"
 
+# ================= VIEWS & BUTTONS =================
 
-# =================================================
 
-
-# --- CLOSE TICKET BUTTON WITH OPTIMIZED TRANSCRIPT LOGGING ---
 class CloseButton(discord.ui.View):
 
     def __init__(self):
@@ -90,7 +95,7 @@ class CloseButton(discord.ui.View):
             "⚠️ Generating transcript & deleting ticket in 5 seconds..."
         )
 
-        log_channel = interaction.guild.get_channel(1550812185679368283)
+        log_channel = interaction.guild.get_channel(TICKET_TRANSCRIPT_LOG_ID)
         if log_channel:
             messages = []
             async for msg in interaction.channel.history(
@@ -119,7 +124,6 @@ class CloseButton(discord.ui.View):
         await interaction.channel.delete()
 
 
-# --- 1. PURCHASE TICKET DROPDOWN ---
 class PurchaseDropdown(discord.ui.Select):
 
     def __init__(self):
@@ -213,7 +217,6 @@ class PurchaseView(discord.ui.View):
         self.add_item(PurchaseDropdown())
 
 
-# --- 2. PAYMENT METHOD DROPDOWN ---
 class PaymentDropdown(discord.ui.Select):
 
     def __init__(self):
@@ -302,7 +305,6 @@ class PaymentView(discord.ui.View):
         self.add_item(PaymentDropdown())
 
 
-# --- 3. SUPPORT TICKET DROPDOWN ---
 class SupportDropdown(discord.ui.Select):
 
     def __init__(self):
@@ -394,7 +396,9 @@ class SupportView(discord.ui.View):
         self.add_item(SupportDropdown())
 
 
-# --- BOT EVENTS ---
+# ================= EVENTS =================
+
+
 @bot.event
 async def on_ready():
     bot.add_view(PurchaseView())
@@ -413,7 +417,6 @@ async def on_member_join(member):
         except Exception as e:
             print(f"Role error: {e}")
 
-    # Welcome Message
     channel = bot.get_channel(WELCOME_CHANNEL_ID)
     if channel:
         content_text = f"{member.mention} Welcome to **RATHORE COMMUNITY**!!!"
@@ -434,7 +437,6 @@ async def on_member_join(member):
             embed.set_image(url=BANNER_IMAGE_URL)
         await channel.send(content=content_text, embed=embed)
 
-    # Join Log Message
     log_channel = bot.get_channel(JOIN_LEAVE_CHANNEL_ID)
     if log_channel:
         log_embed = discord.Embed(
@@ -459,7 +461,59 @@ async def on_member_remove(member):
         await log_channel.send(embed=log_embed)
 
 
-# ================= INSTANT AUDIT LOG LISTENERS =================
+# --- AUTO-MODERATION & COMMAND PROCESSOR ---
+@bot.event
+async def on_message(message):
+    if message.author.bot:
+        return
+
+    msg_content = message.content.lower()
+
+    # 1. Invite Link Check
+    discord_invite_pattern = (
+        r"(discord\.gg|discord\.com/invite)/[a-zA-Z0-9]+"
+    )
+    if re.search(discord_invite_pattern, msg_content):
+        try:
+            await message.delete()
+            await message.channel.send(
+                f"⚠️ {message.author.mention}, invite links allowed nahi hain!",
+                delete_after=5,
+            )
+        except Exception as e:
+            print(f"Delete Error: {e}")
+        return
+
+    # 2. Owner Mention / Ping Check
+    user_tagged = any(user.id == TARGET_USER_ID for user in message.mentions)
+    if user_tagged or message.mention_everyone:
+        try:
+            await message.delete()
+            await message.channel.send(
+                f"⚠️ {message.author.mention}, owner ko ping nahi kar sakte!",
+                delete_after=5,
+            )
+        except Exception as e:
+            print(f"Delete Error: {e}")
+        return
+
+    # 3. Bad Words Check
+    for word in BAD_WORDS:
+        if word in msg_content:
+            try:
+                await message.delete()
+                await message.channel.send(
+                    f"⚠️ {message.author.mention}, bad words allowed nahi hain!",
+                    delete_after=5,
+                )
+            except Exception as e:
+                print(f"Delete Error: {e}")
+            return
+
+    await bot.process_commands(message)
+
+
+# --- AUDIT LOG LISTENERS ---
 @bot.event
 async def on_message_delete(message):
     if message.author.bot:
@@ -523,57 +577,27 @@ async def on_message_edit(before, after):
         await log_channel.send(embed=embed)
 
 
-# --- ON MESSAGE (AUTO-MODERATION & COMMAND PROCESSOR) ---
-@bot.event
-async def on_message(message):
-    if message.author.bot:
-        return
-
-    msg_content = message.content.lower()
-
-    # 1. Invite Link Check
-    discord_invite_pattern = r"(discord\.gg|discord\.com/invite)/[a-zA-Z0-9]+"
-    if re.search(discord_invite_pattern, msg_content):
-        try:
-            await message.delete()
-            await message.channel.send(
-                f"⚠️ {message.author.mention}, invite links allowed nahi hain!",
-                delete_after=5,
-            )
-        except Exception as e:
-            print(f"Delete Error: {e}")
-        return
-
-    # 2. Owner Mention / Ping Check
-    user_tagged = any(user.id == TARGET_USER_ID for user in message.mentions)
-    if user_tagged or message.mention_everyone:
-        try:
-            await message.delete()
-            await message.channel.send(
-                f"⚠️ {message.author.mention}, owner ko ping nahi kar sakte!",
-                delete_after=5,
-            )
-        except Exception as e:
-            print(f"Delete Error: {e}")
-        return
-
-    # 3. Bad Words Check
-    for word in BAD_WORDS:
-        if word in msg_content:
-            try:
-                await message.delete()
-                await message.channel.send(
-                    f"⚠️ {message.author.mention}, bad words allowed nahi hain!",
-                    delete_after=5,
-                )
-            except Exception as e:
-                print(f"Delete Error: {e}")
-            return
-
-    await bot.process_commands(message)
-
-
 # ================= COMMANDS =================
+
+
+@bot.command()
+@commands.has_permissions(administrator=True)
+async def setup_tickets(ctx):
+    """Admin command to setup ticket panels in their respective channels."""
+    purchase_channel = bot.get_channel(PURCHASE_TICKET_CHANNEL_ID)
+    if purchase_channel:
+        embed = discord.Embed(
+            title="🛒 Open Purchase Ticket",
+            description="Select an option below to buy cheats or inquire about product pricing.",
+            color=discord.Color.blue(),
+        )
+        if PURCHASE_BANNER_URL:
+            embed.set_image(url=PURCHASE_BANNER_URL)
+        await purchase_channel.send(embed=embed, view=PurchaseView())
+
+    await ctx.send(
+        "✅ Ticket Panels successfully setupted in configured channel!"
+    )
 
 
 @bot.command()
@@ -599,7 +623,8 @@ async def purchasepanel(ctx):
         "👑 **RATHORE X CHEATS @2026 | by RATHORE !! |**"
     )
     embed = discord.Embed(
-        description=description_text, color=discord.Color.from_rgb(88, 101, 242)
+        description=description_text,
+        color=discord.Color.from_rgb(88, 101, 242),
     )
     embed.set_footer(text="Powered by Owner 1nonlyrathore8")
     if PURCHASE_BANNER_URL:
@@ -657,9 +682,11 @@ async def supportpanel(ctx):
 
 
 @bot.command()
-@commands.has_permissions(administrator=True)
 async def upi(ctx):
-    await ctx.message.delete()
+    try:
+        await ctx.message.delete()
+    except Exception:
+        pass
     embed = discord.Embed(
         title="💳 Indian Payment Details (UPI / QR)",
         description=f"Send payment to details below and share **screenshot + Transaction ID**:\n\n"
@@ -675,9 +702,11 @@ async def upi(ctx):
 
 
 @bot.command()
-@commands.has_permissions(administrator=True)
 async def binance(ctx):
-    await ctx.message.delete()
+    try:
+        await ctx.message.delete()
+    except Exception:
+        pass
     embed = discord.Embed(
         title="🟡 Binance / Crypto Payment Details",
         description=f"Send payment using Binance Pay ID or Crypto address:\n\n"
