@@ -76,10 +76,11 @@ PAYMENT_CATEGORY_NAME = "💳┃𝘗𝘈𝘠𝘔𝘌𝘕𝘛-𝘔𝘌𝘛𝘏�
 
 # ================= ANTI-NUKE CONFIGURATION =================
 ANTI_NUKE_LIMITS = {
-    'channel_delete': 3,  # Max channels deleted per 1 min
-    'role_delete': 3,     # Max roles deleted per 1 min
-    'ban_member': 3,      # Max bans per 1 min
-    'kick_member': 3      # Max kicks per 1 min
+    'channel_delete': 3,   # Max channels deleted per 1 min
+    'category_delete': 1,  # Max categories deleted per 1 min (Strict punishment)
+    'role_delete': 3,      # Max roles deleted per 1 min
+    'ban_member': 3,       # Max bans per 1 min
+    'kick_member': 3       # Max kicks per 1 min
 }
 
 # Tracking dicts for action counts
@@ -109,7 +110,7 @@ async def nuke_punish(guild, user, action_name):
         if log_channel:
             embed = discord.Embed(
                 title="🛡️ ANTI-NUKE TRIGGERED",
-                description=f"🚨 **{user.mention}** (`{user.id}`) was BANNED for attempting mass {action_name}!",
+                description=f"🚨 **{user.mention}** (`{user.id}`) was BANNED for attempting {action_name}!",
                 color=discord.Color.dark_red(),
                 timestamp=discord.utils.utcnow()
             )
@@ -361,7 +362,6 @@ async def on_ready():
 
 @bot.event
 async def on_member_join(member):
-    # Anti-Bot Protection
     if member.bot:
         try:
             async for entry in member.guild.audit_logs(limit=1, action=discord.AuditLogAction.bot_add):
@@ -420,19 +420,26 @@ async def on_member_remove(member):
 
 # ================= AUDIT LOG & ANTI-NUKE LISTENERS =================
 
-# 1. ANTI-NUKE: CHANNEL DELETE LOG & PROTECTION
+# 1. ANTI-NUKE: CHANNEL & CATEGORY DELETE PROTECTION
 @bot.event
 async def on_guild_channel_delete(channel):
     try:
         async for entry in channel.guild.audit_logs(limit=1, action=discord.AuditLogAction.channel_delete):
             executor = entry.user
-            if check_anti_nuke(executor.id, 'channel_delete'):
-                await nuke_punish(channel.guild, executor, "Channel Delete")
+            
+            # Category Delete Detection
+            if isinstance(channel, discord.CategoryChannel):
+                if check_anti_nuke(executor.id, 'category_delete'):
+                    await nuke_punish(channel.guild, executor, "Category Delete")
+            # Text / Voice Channel Delete Detection
+            else:
+                if check_anti_nuke(executor.id, 'channel_delete'):
+                    await nuke_punish(channel.guild, executor, "Channel Delete")
             break
     except Exception as e:
-        print(f"Anti-Nuke Channel Delete Error: {e}")
+        print(f"Anti-Nuke Channel/Category Delete Error: {e}")
 
-# 2. ANTI-NUKE: ROLE DELETE LOG & PROTECTION
+# 2. ANTI-NUKE: ROLE DELETE PROTECTION
 @bot.event
 async def on_guild_role_delete(role):
     try:
@@ -578,7 +585,7 @@ async def on_message(message):
 
     await bot.process_commands(message)
 
-# ================= OWNER COMMANDS =================
+# ================= COMMANDS =================
 
 @bot.command()
 async def purchasepanel(ctx):
@@ -1061,7 +1068,7 @@ async def rules(ctx):
 # ================= RUN SERVER & BOT =================
 if __name__ == "__main__":
     keep_alive()
-    token = os.environ.get("DISCORD_TOKEN") or os.getenv("TOKEN")
+    token = os.environ.get("DISCORD_TOKEN") or os.getenv("TOKEN") or os.environ.get("DISCORD_BOT_TOKEN")
     if token:
         bot.run(token)
     else:
