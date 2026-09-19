@@ -932,6 +932,36 @@ async def paidpush(ctx):
 
     await ctx.send(embed=embed)
 
+@bot.command()
+async def level8ids(ctx):
+    try:
+        await ctx.message.delete()
+    except Exception:
+        pass
+
+    # Discord space collapse fix variable
+    e = "<a:259419darkbluearrow:1550842821940879432>\u3000"
+
+    description_text = (
+        f"{e}**LV 8 IDS**\n\n"
+        
+        f"{e}**STOCK = UNLIMITED**\n"
+        "\n\n"
+        f"{e}**PRICE: 5 ID IN JUST 100 INR**\n\n"
+        
+        "**FOR PURCHASE** <#1550562248932724756>"
+    )
+
+    embed = discord.Embed(
+        description=description_text,
+        color=discord.Color.from_rgb(0, 162, 255),
+    )
+
+    banner_url = "https://media.discordapp.net/attachments/1490095245302431868/1519001574742036761/standard_1.gif?ex=6aaf5335&is=6aae01b5&hm=93a8da68d2d2238bd90cf9bc0c98af2dd89eb8f02c177b8bd8f094d9b4132b98&="
+    embed.set_image(url=banner_url)
+
+    await ctx.send(embed=embed)
+
 # ================= RUN SERVER & BOT =================
 if __name__ == "__main__":
     keep_alive()
