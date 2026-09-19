@@ -962,6 +962,59 @@ async def level8ids(ctx):
 
     await ctx.send(embed=embed)
 
+@bot.command()
+async def rules(ctx):
+    try:
+        await ctx.message.delete()
+    except Exception:
+        pass
+
+    # Discord space collapse fix variable
+    e = "<a:259419darkbluearrow:1550842821940879432>\u3000"
+
+    description_text = (
+        f"{e}**RATHORE X RULES**\n"
+        "\n\n"
+        f"{e}**WELCOME TO RATHORE SERVER !!**\n\n"
+        
+        "**BE RESPECTFUL :**\n"
+        f"{e}TREAT EVERYONE WITH RESPECT. NO TOXIC BEHAVIOR, HATE SPEECH, PERSONAL ATTACKS, IMPERSONATION, FALSE ACCUSATIONS, OR ANY DISRESPECTFUL CONDUCT WILL BE TOLERATED.\n\n"
+        
+        "**KEEP CHANNELS CLEAN :**\n"
+        f"{e}NO SPAMMING, COPYING & PASTING REPEATEDLY, BEGGING, ADVERTISING OTHER SERVERS, OR POSTING NSFW/DISTURBING CONTENT. DISCUSSIONS ABOUT CHEATS OR ANY ILLEGAL ACTIVITY ARE STRICTLY PROHIBITED.\n\n"
+        
+        "**NO PROMOTION :**\n"
+        f"{e}PROMOTION OF OTHER SERVERS, PRODUCTS, OR SERVICES WITHOUT PERMISSION IS STRICTLY PROHIBITED.\n\n"
+        
+        "**USE APPROPRIATE NAMES & PROFILES :**\n"
+        f"{e}CHOOSE A CLEAN, NON-OFFENSIVE USERNAME, AVATAR, AND PROFILE. INAPPROPRIATE OR OFFENSIVE CONTENT WILL BE REMOVED IMMEDIATELY.\n\n"
+        
+        "**NO FILTER OR PUNISHMENT EVASION :**\n"
+        f"{e}DO NOT TRY TO BYPASS FILTERS OR PUNISHMENTS. DOING SO WILL LEAD TO FURTHER DISCIPLINARY ACTION.\n\n"
+        
+        "**SUPPORT POLICY :**\n"
+        f"{e}THERE IS NO SUPPORT FOR FREE IMGUI VERSIONS. IF YOU HAVE PURCHASED A PRODUCT, YOU GET 3 DAYS OF FREE SUPPORT ONLY. DMING STAFF DIRECTLY WILL LEAD TO TIMEOUTS OR PERMANENT BANS.\n\n"
+        
+        "**STAY INFORMED :**\n"
+        f"{e}PLEASE READ ALL CHANNELS CAREFULLY, INCLUDING OUR TERMS OF SERVICE, REFUND POLICY, AND PRIVACY POLICY, AVAILABLE ON THE WEBSITE AND SERVER.\n\n"
+        
+        "**REFUND POLICY :**\n"
+        f"{e}WE STRIVE TO PROVIDE QUALITY SERVICES AND PRODUCTS. REFUNDS ARE CONSIDERED ONLY UNDER GENUINE ISSUES AND WITHIN A LIMITED TIMEFRAME. PLEASE CONTACT SUPPORT PROMPTLY WITH VALID REASONS. ALL REFUND REQUESTS ARE SUBJECT TO REVIEW AND APPROVAL.\n\n"
+        
+        f"{e}**BY JOINING RATHORE SERVER , YOU AGREE TO FOLLOW THESE RULES. THANK YOU FOR HELPING US BUILD A RESPECTFUL AND TRUSTWORTHY COMMUNITY**\n\n"
+        
+    )
+
+    embed = discord.Embed(
+        description=description_text,
+        color=discord.Color.from_rgb(0, 162, 255),
+    )
+
+    banner_url = "https://media.discordapp.net/attachments/1529086631536234637/1548911076505030656/SERVER_RULES.gif?ex=6aaf5eda&is=6aae0d5a&hm=21191945043f4c5293e08011c7f95b141ab0078bacf8a44730b450f859cb6114&"
+    embed.set_image(url=banner_url)
+
+    await ctx.send(embed=embed)
+
 # ================= RUN SERVER & BOT =================
 if __name__ == "__main__":
     keep_alive()
