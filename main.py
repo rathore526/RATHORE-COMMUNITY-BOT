@@ -759,6 +759,7 @@ async def price(ctx):
         "<a:259419darkbluearrow:1550842821940879432> MORE THAN 40+ FEATURES\n\n"
         
         "**SETTING FEATURES**\n"
+        \xa0
         "<a:259419darkbluearrow:1550842821940879432> RESET GUEST\n"
         "<a:259419darkbluearrow:1550842821940879432> KEYBIND SUPPORT\n"
         "<a:259419darkbluearrow:1550842821940879432> TOPMOST SUPPORT\n"
