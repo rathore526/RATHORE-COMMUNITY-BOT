@@ -689,7 +689,7 @@ async def price(ctx):
         "• **30 DAYS - 1800 INR | 20 USD**\n"
         "• **LIFETIME - 4500 INR | 40 USD**\n\n"
         
-        "**FOR PURCHASE** <1550562248932724756>"
+        "**FOR PURCHASE** <#1550562248932724756>"
     )
 
     embed = discord.Embed(
