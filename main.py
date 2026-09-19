@@ -714,15 +714,18 @@ async def price(ctx):
 
     description_text = (
         "<a:259419darkbluearrow:1550842821940879432> **RATHORE X AIMKILL**\n"
+        \xa0
         "<a:259419darkbluearrow:1550842821940879432> **PANEL FEATURES**\n\n"
         
         "**AIM FEATURES**\n"
+        \xa0
         "<a:259419darkbluearrow:1550842821940879432> AIMKILL MAX [ COVER ]\n"
         "<a:259419darkbluearrow:1550842821940879432> AIM ASSIST\n"
         "<a:259419darkbluearrow:1550842821940879432> NO HIT DELAY\n"
         "<a:259419darkbluearrow:1550842821940879432> FOV - 999X\n\n"
         
         "**VISUAL FEATURES**\n"
+        \xa0
         "<a:259419darkbluearrow:1550842821940879432> ESP LINE\n"
         "<a:259419darkbluearrow:1550842821940879432> ESP INFO\n"
         "<a:259419darkbluearrow:1550842821940879432> ESP DISTANCE\n"
@@ -733,6 +736,7 @@ async def price(ctx):
         "<a:259419darkbluearrow:1550842821940879432> TRACKER, ETC.\n\n"
         
         "**MISC FEATURES**\n"
+        \xa0
         "<a:259419darkbluearrow:1550842821940879432> DOWNKILL\n"
         "<a:259419darkbluearrow:1550842821940879432> EXECUTER\n"
         "<a:259419darkbluearrow:1550842821940879432> UPWARD DYNEX [ 200X ]\n"
@@ -745,6 +749,7 @@ async def price(ctx):
         "<a:259419darkbluearrow:1550842821940879432> SHAKE KILL\n\n"
         
         "**GLOBAL FEATURES**\n"
+        \xa0
         "<a:259419darkbluearrow:1550842821940879432> SPEED JOYSTICK\n"
         "<a:259419darkbluearrow:1550842821940879432> SPEED SCALER\n"
         "<a:259419darkbluearrow:1550842821940879432> NIGHT MODE\n"
@@ -761,6 +766,7 @@ async def price(ctx):
         "<a:259419darkbluearrow:1550842821940879432> MORE THAN 40+ FEATURES\n\n"
         
         "**PRICES :**\n"
+        \xa0
         "<a:259419darkbluearrow:1550842821940879432> **1 DAYS - 140 INR | 1.60 USD**\n"
         "<a:259419darkbluearrow:1550842821940879432> **7 DAYS - 600 INR | 7 USD**\n"
         "<a:259419darkbluearrow:1550842821940879432> **30 DAYS - 1800 INR | 20 USD**\n"
