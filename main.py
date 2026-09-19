@@ -3,6 +3,7 @@ import io
 import re
 import asyncio
 import datetime
+from collections import defaultdict
 from threading import Thread
 from flask import Flask
 import discord
@@ -73,6 +74,49 @@ PURCHASE_CATEGORY_NAME = "🎫┃𝘗𝘜𝘙𝘊𝘏𝘈𝘚𝘌-𝘏𝘌𝘙�
 SUPPORT_CATEGORY_NAME = "🎟️┃𝘚𝘜𝘗𝘗𝘖𝘙𝘛"
 PAYMENT_CATEGORY_NAME = "💳┃𝘗𝘈𝘠𝘔𝘌𝘕𝘛-𝘔𝘌𝘛𝘏𝘖𝘋"
 
+# ================= ANTI-NUKE CONFIGURATION =================
+ANTI_NUKE_LIMITS = {
+    'channel_delete': 3,  # Max channels deleted per 1 min
+    'role_delete': 3,     # Max roles deleted per 1 min
+    'ban_member': 3,      # Max bans per 1 min
+    'kick_member': 3      # Max kicks per 1 min
+}
+
+# Tracking dicts for action counts
+action_tracker = defaultdict(lambda: defaultdict(list))
+
+def check_anti_nuke(user_id, action_type):
+    if user_id == TARGET_USER_ID:
+        return False
+    
+    now = datetime.datetime.now(datetime.timezone.utc)
+    cutoff = now - datetime.timedelta(seconds=60)
+    
+    action_tracker[user_id][action_type] = [
+        t for t in action_tracker[user_id][action_type] if t > cutoff
+    ]
+    
+    action_tracker[user_id][action_type].append(now)
+    
+    if len(action_tracker[user_id][action_type]) >= ANTI_NUKE_LIMITS[action_type]:
+        return True
+    return False
+
+async def nuke_punish(guild, user, action_name):
+    try:
+        await guild.ban(user, reason=f"[ANTI-NUKE] Triggered mass {action_name}")
+        log_channel = guild.get_channel(MOD_LOG_CHANNEL_ID)
+        if log_channel:
+            embed = discord.Embed(
+                title="🛡️ ANTI-NUKE TRIGGERED",
+                description=f"🚨 **{user.mention}** (`{user.id}`) was BANNED for attempting mass {action_name}!",
+                color=discord.Color.dark_red(),
+                timestamp=discord.utils.utcnow()
+            )
+            await log_channel.send(embed=embed)
+    except Exception as e:
+        print(f"Anti-nuke punishment error: {e}")
+
 # ================= GLOBAL OWNER-ONLY CHECK =================
 @bot.check
 async def restrict_all_commands_to_owner(ctx):
@@ -93,7 +137,6 @@ class CloseButton(discord.ui.View):
         channel = interaction.channel
         guild = interaction.guild
 
-        # Generate Transcript File
         messages = []
         async for msg in channel.history(limit=500, oldest_first=True):
             time_str = msg.created_at.strftime("%Y-%m-%d %H:%M:%S")
@@ -103,7 +146,6 @@ class CloseButton(discord.ui.View):
         file_bytes = transcript_text.encode('utf-8')
         transcript_file = discord.File(io.BytesIO(file_bytes), filename=f"transcript-{channel.name}.txt")
 
-        # Send Close Log ONLY to TICKET_CLOSED_CHANNEL_ID
         closed_log_channel = guild.get_channel(TICKET_CLOSED_CHANNEL_ID)
         if closed_log_channel:
             embed = discord.Embed(
@@ -319,6 +361,17 @@ async def on_ready():
 
 @bot.event
 async def on_member_join(member):
+    # Anti-Bot Protection
+    if member.bot:
+        try:
+            async for entry in member.guild.audit_logs(limit=1, action=discord.AuditLogAction.bot_add):
+                if entry.user.id != TARGET_USER_ID:
+                    await member.ban(reason="[ANTI-BOT] Unauthorised bot added")
+                    await member.guild.ban(entry.user, reason="[ANTI-BOT] Added unauthorized bot")
+                    return
+        except Exception as e:
+            print(f"Anti-Bot Error: {e}")
+
     role = discord.utils.get(member.guild.roles, name=AUTO_ROLE_NAME)
     if role:
         try:
@@ -365,9 +418,45 @@ async def on_member_remove(member):
         log_embed.set_thumbnail(url=member.display_avatar.url)
         await log_channel.send(embed=log_embed)
 
-# ================= AUDIT LOG LISTENERS =================
+# ================= AUDIT LOG & ANTI-NUKE LISTENERS =================
 
-# 1. MESSAGE DELETE LOG
+# 1. ANTI-NUKE: CHANNEL DELETE LOG & PROTECTION
+@bot.event
+async def on_guild_channel_delete(channel):
+    try:
+        async for entry in channel.guild.audit_logs(limit=1, action=discord.AuditLogAction.channel_delete):
+            executor = entry.user
+            if check_anti_nuke(executor.id, 'channel_delete'):
+                await nuke_punish(channel.guild, executor, "Channel Delete")
+            break
+    except Exception as e:
+        print(f"Anti-Nuke Channel Delete Error: {e}")
+
+# 2. ANTI-NUKE: ROLE DELETE LOG & PROTECTION
+@bot.event
+async def on_guild_role_delete(role):
+    try:
+        async for entry in role.guild.audit_logs(limit=1, action=discord.AuditLogAction.role_delete):
+            executor = entry.user
+            if check_anti_nuke(executor.id, 'role_delete'):
+                await nuke_punish(role.guild, executor, "Role Delete")
+            break
+    except Exception as e:
+        print(f"Anti-Nuke Role Delete Error: {e}")
+
+# 3. ANTI-NUKE: BAN AUDIT MONITORING
+@bot.event
+async def on_member_ban(guild, user):
+    try:
+        async for entry in guild.audit_logs(limit=1, action=discord.AuditLogAction.ban):
+            executor = entry.user
+            if executor.id != bot.user.id and check_anti_nuke(executor.id, 'ban_member'):
+                await nuke_punish(guild, executor, "Member Ban")
+            break
+    except Exception as e:
+        print(f"Anti-Nuke Ban Error: {e}")
+
+# 4. MESSAGE DELETE LOG
 @bot.event
 async def on_message_delete(message):
     if message.author and message.author.bot:
@@ -395,7 +484,7 @@ async def on_message_delete(message):
     if message.id in MESSAGE_CACHE:
         del MESSAGE_CACHE[message.id]
 
-# 2. ROLE CREATE LOG
+# 5. ROLE CREATE LOG
 @bot.event
 async def on_guild_role_create(role):
     log_channel = bot.get_channel(AUDIT_LOG_CHANNEL_ID)
@@ -403,7 +492,6 @@ async def on_guild_role_create(role):
         return
 
     creator_str = "Unknown User"
-    
     try:
         await asyncio.sleep(1)
         async for entry in role.guild.audit_logs(limit=1, action=discord.AuditLogAction.role_create):
@@ -637,6 +725,10 @@ async def clear(ctx, amount: int = 5):
 
 @bot.command()
 async def kick(ctx, member: discord.Member, *, reason="Koyi reason nahi diya"):
+    if check_anti_nuke(ctx.author.id, 'kick_member'):
+        await nuke_punish(ctx.guild, ctx.author, "Kick")
+        return
+
     await member.kick(reason=reason)
     await ctx.send(f"🚨 {member.mention} ko kick kar diya gaya. Reason: {reason}")
 
@@ -651,6 +743,10 @@ async def kick(ctx, member: discord.Member, *, reason="Koyi reason nahi diya"):
 
 @bot.command()
 async def ban(ctx, member: discord.Member, *, reason="Rule break kiya"):
+    if check_anti_nuke(ctx.author.id, 'ban_member'):
+        await nuke_punish(ctx.guild, ctx.author, "Ban")
+        return
+
     await member.ban(reason=reason)
     await ctx.send(f"⛔ {member.mention} ko BAN kar diya gaya. Reason: {reason}")
 
@@ -713,19 +809,14 @@ async def price(ctx):
         pass
 
     description_text = (
-        "<a:259419darkbluearrow:1550842821940879432> **RATHORE X AIMKILL**\n"
-        "\n\n"
+        "<a:259419darkbluearrow:1550842821940879432> **RATHORE X AIMKILL**\n\n"
         "<a:259419darkbluearrow:1550842821940879432> **PANEL FEATURES**\n\n"
-        
-        "**AIM FEATURES**\n"
-        "\n\n"
+        "**AIM FEATURES**\n\n"
         "<a:259419darkbluearrow:1550842821940879432> AIMKILL MAX [ COVER ]\n"
         "<a:259419darkbluearrow:1550842821940879432> AIM ASSIST\n"
         "<a:259419darkbluearrow:1550842821940879432> NO HIT DELAY\n"
         "<a:259419darkbluearrow:1550842821940879432> FOV - 999X\n\n"
-        
-        "**VISUAL FEATURES**\n"
-        "\n\n"
+        "**VISUAL FEATURES**\n\n"
         "<a:259419darkbluearrow:1550842821940879432> ESP LINE\n"
         "<a:259419darkbluearrow:1550842821940879432> ESP INFO\n"
         "<a:259419darkbluearrow:1550842821940879432> ESP DISTANCE\n"
@@ -734,9 +825,7 @@ async def price(ctx):
         "<a:259419darkbluearrow:1550842821940879432> ESP GRENADE\n"
         "<a:259419darkbluearrow:1550842821940879432> ESP NAME\n"
         "<a:259419darkbluearrow:1550842821940879432> TRACKER, ETC.\n\n"
-        
-        "**MISC FEATURES**\n"
-        "\n\n"
+        "**MISC FEATURES**\n\n"
         "<a:259419darkbluearrow:1550842821940879432> DOWNKILL\n"
         "<a:259419darkbluearrow:1550842821940879432> EXECUTER\n"
         "<a:259419darkbluearrow:1550842821940879432> UPWARD DYNEX [ 200X ]\n"
@@ -747,9 +836,7 @@ async def price(ctx):
         "<a:259419darkbluearrow:1550842821940879432> BASE BREAKER\n"
         "<a:259419darkbluearrow:1550842821940879432> GHOST HACK\n"
         "<a:259419darkbluearrow:1550842821940879432> SHAKE KILL\n\n"
-        
-        "**GLOBAL FEATURES**\n"
-        "\n\n"
+        "**GLOBAL FEATURES**\n\n"
         "<a:259419darkbluearrow:1550842821940879432> SPEED JOYSTICK\n"
         "<a:259419darkbluearrow:1550842821940879432> SPEED SCALER\n"
         "<a:259419darkbluearrow:1550842821940879432> NIGHT MODE\n"
@@ -757,22 +844,17 @@ async def price(ctx):
         "<a:259419darkbluearrow:1550842821940879432> 11+ PREMIUM LOOK CHANGERS\n"
         "<a:259419darkbluearrow:1550842821940879432> 7+ PREMIUM EMOTE CHANGERS\n"
         "<a:259419darkbluearrow:1550842821940879432> MORE THAN 40+ FEATURES\n\n"
-        
-        "**SETTING FEATURES**\n"
-        "\n\n"
+        "**SETTING FEATURES**\n\n"
         "<a:259419darkbluearrow:1550842821940879432> RESET GUEST\n"
         "<a:259419darkbluearrow:1550842821940879432> KEYBIND SUPPORT\n"
         "<a:259419darkbluearrow:1550842821940879432> TOPMOST SUPPORT\n"
         "<a:259419darkbluearrow:1550842821940879432> THEME SUPPORT\n"
         "<a:259419darkbluearrow:1550842821940879432> MORE THAN 40+ FEATURES\n\n"
-        
-        "**PRICES :**\n"
-        "\n\n"
+        "**PRICES :**\n\n"
         "<a:259419darkbluearrow:1550842821940879432> **1 DAYS - 140 INR | 1.60 USD**\n"
         "<a:259419darkbluearrow:1550842821940879432> **7 DAYS - 600 INR | 7 USD**\n"
         "<a:259419darkbluearrow:1550842821940879432> **30 DAYS - 1800 INR | 20 USD**\n"
         "<a:259419darkbluearrow:1550842821940879432> **LIFETIME - 4500 INR | 40 USD**\n\n"
-        
         "**FOR PURCHASE** <#1550562248932724756>"
     )
 
@@ -793,15 +875,12 @@ async def silentkill(ctx):
     except Exception:
         pass
 
-    # Discord space collapse fix variable
     e = "<a:259419darkbluearrow:1550842821940879432>\u3000"
 
     description_text = (
         f"{e}**RATHORE X SILENT KILL**\n\n"
         f"{e}**PANEL FUNCTIONS**\n\n"
-        
-        "**AIMBOT MODULE**\n"
-        "\n\n"
+        "**AIMBOT MODULE**\n\n"
         f"{e}ENABLE ALL\n"
         f"{e}SILENT AIM\n"
         f"{e}PULL 360\n"
@@ -811,31 +890,22 @@ async def silentkill(ctx):
         f"{e}GHOST\n"
         f"{e}JOYSTICK SPEED\n"
         f"{e}SPEED RUN\n\n"
-        
-        "**VISUALS MODULE**\n"
-        "\n\n"
+        "**VISUALS MODULE**\n\n"
         f"{e}ESP LINE\n"
         f"{e}ESP BOX\n"
         f"{e}ESP NAME\n"
         f"{e}ESP HEALTH\n"
         f"{e}ESP DISTANCE\n\n"
-        
-        "**CORE USP :**\n"
-        "\n\n"
+        "**CORE USP :**\n\n"
         f"{e}REGULAR UPDATES\n"
         f"{e}FASTEST SUPPORT\n"
         f"{e}ALL SERVER SAFE\n\n"
-        
-        "**SETTINGS**\n"
-        "\n\n"
+        "**SETTINGS**\n\n"
         f"{e}RESET GUEST\n\n"
-        
-        "**PRICES**\n"
-        "\n\n"
+        "**PRICES**\n\n"
         f"{e}**7 DAYS - 650 INR**\n"
         f"{e}**14 DAYS - 1000 INR**\n"
         f"{e}**30 DAYS - 1850 INR**\n\n"
-        
         "**FOR PURCHASE** <#1550562248932724756>"
     )
 
@@ -856,30 +926,23 @@ async def emulatorbypass(ctx):
     except Exception:
         pass
 
-    # Discord space collapse fix variable
     e = "<a:259419darkbluearrow:1550842821940879432>\u3000"
 
     description_text = (
         f"{e}**RATHORE X BYPASS**\n"
         f"{e}**EMULATOR BYPASS (LIB-BASED) – NEW BR SEASON**\n\n"
-        
         f"{e}**PLAY THE NEW BR SEASON WITHOUT RESTRICTIONS**\n\n"
-        
-        "**FEATURES**\n"
-        "\n\n"
+        "**FEATURES**\n\n"
         f"{e}NO UID RESTRICTION\n"
         f"{e}PLAY ON UNLIMITED IDS\n"
         f"{e}SAFE FOR MAIN ACCOUNT\n"
         f"{e}NO LIMIT ON KILLS\n\n"
-        
-        "**PRICING**\n"
-        "\n\n"
+        "**PRICING**\n\n"
         f"{e}**1 DAY – ₹120**\n"
         f"{e}**7 DAYS – ₹500**\n"
         f"{e}**15 DAYS – ₹800**\n"
         f"{e}**1 MONTH – ₹1500**\n"
         f"{e}**PERMANENT – ₹4500**\n\n"
-        
         "**FOR PURCHASE** <#1550562248932724756>"
     )
 
@@ -900,14 +963,11 @@ async def paidpush(ctx):
     except Exception:
         pass
 
-    # Discord space collapse fix variable
     e = "<a:259419darkbluearrow:1550842821940879432>\u3000"
 
     description_text = (
-        f"{e}**RATHORE X PAID PUSH**\n"
-        "\n\n"
+        f"{e}**RATHORE X PAID PUSH**\n\n"
         f"{e}**PAID PUSH PRICING**\n\n"
-        
         f"{e}**20 STAR = 80 INR**\n"
         f"{e}**40 STAR = 160 INR**\n"
         f"{e}**60 STAR = 240 INR**\n"
@@ -918,7 +978,6 @@ async def paidpush(ctx):
         f"{e}**400 STAR = 1600 INR**\n"
         f"{e}**500 STAR = 2000 INR**\n"
         f"{e}**999 STAR = 2999 INR**\n\n"
-        
         "**FOR PURCHASE** <#1550562248932724756>"
     )
 
@@ -939,16 +998,12 @@ async def level8ids(ctx):
     except Exception:
         pass
 
-    # Discord space collapse fix variable
     e = "<a:259419darkbluearrow:1550842821940879432>\u3000"
 
     description_text = (
         f"{e}**LV 8 IDS**\n\n"
-        
-        f"{e}**STOCK = UNLIMITED**\n"
-        "\n\n"
+        f"{e}**STOCK = UNLIMITED**\n\n"
         f"{e}**PRICE: 5 ID IN JUST 100 INR**\n\n"
-        
         "**FOR PURCHASE** <#1550562248932724756>"
     )
 
@@ -969,40 +1024,28 @@ async def rules(ctx):
     except Exception:
         pass
 
-    # Discord space collapse fix variable
     e = "<a:259419darkbluearrow:1550842821940879432>\u3000"
 
     description_text = (
-        f"{e}**RATHORE X RULES**\n"
-        "\n\n"
+        f"{e}**RATHORE X RULES**\n\n"
         f"{e}**WELCOME TO RATHORE SERVER !!**\n\n"
-        
         "**BE RESPECTFUL :**\n"
         f"{e}TREAT EVERYONE WITH RESPECT. NO TOXIC BEHAVIOR, HATE SPEECH, PERSONAL ATTACKS, IMPERSONATION, FALSE ACCUSATIONS, OR ANY DISRESPECTFUL CONDUCT WILL BE TOLERATED.\n\n"
-        
         "**KEEP CHANNELS CLEAN :**\n"
         f"{e}NO SPAMMING, COPYING & PASTING REPEATEDLY, BEGGING, ADVERTISING OTHER SERVERS, OR POSTING NSFW/DISTURBING CONTENT. DISCUSSIONS ABOUT CHEATS OR ANY ILLEGAL ACTIVITY ARE STRICTLY PROHIBITED.\n\n"
-        
         "**NO PROMOTION :**\n"
         f"{e}PROMOTION OF OTHER SERVERS, PRODUCTS, OR SERVICES WITHOUT PERMISSION IS STRICTLY PROHIBITED.\n\n"
-        
         "**USE APPROPRIATE NAMES & PROFILES :**\n"
         f"{e}CHOOSE A CLEAN, NON-OFFENSIVE USERNAME, AVATAR, AND PROFILE. INAPPROPRIATE OR OFFENSIVE CONTENT WILL BE REMOVED IMMEDIATELY.\n\n"
-        
         "**NO FILTER OR PUNISHMENT EVASION :**\n"
         f"{e}DO NOT TRY TO BYPASS FILTERS OR PUNISHMENTS. DOING SO WILL LEAD TO FURTHER DISCIPLINARY ACTION.\n\n"
-        
         "**SUPPORT POLICY :**\n"
         f"{e}THERE IS NO SUPPORT FOR FREE IMGUI VERSIONS. IF YOU HAVE PURCHASED A PRODUCT, YOU GET 3 DAYS OF FREE SUPPORT ONLY. DMING STAFF DIRECTLY WILL LEAD TO TIMEOUTS OR PERMANENT BANS.\n\n"
-        
         "**STAY INFORMED :**\n"
         f"{e}PLEASE READ ALL CHANNELS CAREFULLY, INCLUDING OUR TERMS OF SERVICE, REFUND POLICY, AND PRIVACY POLICY, AVAILABLE ON THE WEBSITE AND SERVER.\n\n"
-        
         "**REFUND POLICY :**\n"
         f"{e}WE STRIVE TO PROVIDE QUALITY SERVICES AND PRODUCTS. REFUNDS ARE CONSIDERED ONLY UNDER GENUINE ISSUES AND WITHIN A LIMITED TIMEFRAME. PLEASE CONTACT SUPPORT PROMPTLY WITH VALID REASONS. ALL REFUND REQUESTS ARE SUBJECT TO REVIEW AND APPROVAL.\n\n"
-        
         f"{e}**BY JOINING RATHORE SERVER , YOU AGREE TO FOLLOW THESE RULES. THANK YOU FOR HELPING US BUILD A RESPECTFUL AND TRUSTWORTHY COMMUNITY**\n\n"
-        
     )
 
     embed = discord.Embed(
