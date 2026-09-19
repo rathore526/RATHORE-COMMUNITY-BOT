@@ -28,15 +28,19 @@ def keep_alive():
     t.start()
 
 
-# ================= DISCORD BOT SETUP (OPTIMIZED CACHE) =================
+# ================= DISCORD BOT SETUP =================
 intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
 intents.guilds = True
 intents.auto_moderation = True
 
-# Max message cache limits added for instant audit log capturing
-bot = commands.Bot(command_prefix="!", intents=intents, max_messages=10000)
+bot = commands.Bot(
+    command_prefix="!",
+    intents=intents,
+    max_messages=10000,
+    partials=[discord.Partials.MESSAGE, discord.Partials.CHANNEL, discord.Partials.REACTION],
+)
 
 # ================= CONFIGURATION =================
 WELCOME_CHANNEL_ID = 1548746560626499636
@@ -44,9 +48,9 @@ AUDIT_LOG_CHANNEL_ID = 1550511155464773652
 JOIN_LEAVE_CHANNEL_ID = 1548752079248691200  # Join-Leave logs ID
 MOD_LOG_CHANNEL_ID = 1548751987695296664  # Mod-logs ID
 TICKET_LOG_CHANNEL_ID = 1550532272011214919  # Ticket activity logs
-TICKET_TRANSCRIPT_LOG_ID = 1550812185679368283  # Ticket transcript logs
+TICKET_TRANSCRIPT_LOG_ID = 1550822114238533773  # Ticket transcript logs
 
-# 📌 TICKET OPEN CHANNELS (Aapki Ticket Open Channel ID)
+# 📌 TICKET OPEN CHANNELS
 PURCHASE_TICKET_CHANNEL_ID = 1550532272011214919
 SUPPORT_TICKET_CHANNEL_ID = 1550532272011214919
 PAYMENT_TICKET_CHANNEL_ID = 1550532272011214919
@@ -77,8 +81,27 @@ PAYMENT_CATEGORY_NAME = "💳┃𝘗𝘈𝘠𝘔𝘌𝘕𝘛-𝘔𝘌𝘛𝘏�
 
 # ================= VIEWS & BUTTONS =================
 
-class PurchaseDropdown(discord.ui.Select):
 
+class CloseButton(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+
+    @discord.ui.button(
+        label="Close Ticket 🔒",
+        style=discord.ButtonStyle.red,
+        custom_id="close_ticket_btn",
+    )
+    async def close_ticket(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ):
+        await interaction.response.send_message(
+            "🔒 Ticket 5 seconds me close ho raha hai...", ephemeral=False
+        )
+        await asyncio.sleep(5)
+        await interaction.channel.delete()
+
+
+class PurchaseDropdown(discord.ui.Select):
     def __init__(self):
         options = [
             discord.SelectOption(
@@ -123,7 +146,7 @@ class PurchaseDropdown(discord.ui.Select):
         }
 
         ticket_channel = await guild.create_text_channel(
-            name=f"ticket-{interaction.user.name.lower()}",
+            name=f"purchase-{interaction.user.name.lower()}",
             overwrites=overwrites,
             category=category,
         )
@@ -136,10 +159,11 @@ class PurchaseDropdown(discord.ui.Select):
             view=CloseButton(),
         )
 
+        # Log Message Send
         log_channel = guild.get_channel(TICKET_LOG_CHANNEL_ID)
         if log_channel:
             embed = discord.Embed(
-                title="🎟️ New Ticket Opened",
+                title="🎟️ New Purchase Ticket Opened",
                 color=discord.Color.green(),
                 timestamp=discord.utils.utcnow(),
             )
@@ -164,14 +188,12 @@ class PurchaseDropdown(discord.ui.Select):
 
 
 class PurchaseView(discord.ui.View):
-
     def __init__(self):
         super().__init__(timeout=None)
         self.add_item(PurchaseDropdown())
 
 
 class PaymentDropdown(discord.ui.Select):
-
     def __init__(self):
         options = [
             discord.SelectOption(
@@ -238,7 +260,7 @@ class PaymentDropdown(discord.ui.Select):
 
         embed = discord.Embed(
             title=f"💳 Payment Ticket: {selected_option}",
-            description=f"Hello {member.mention}, welcome!\n\nStaff will send payment details shortly. You can also use `!upi` or `!binance` command here.",
+            description=f"Hello {member.mention}, welcome!\n\nStaff will send payment details shortly.",
             color=discord.Color.gold(),
         )
 
@@ -250,16 +272,41 @@ class PaymentDropdown(discord.ui.Select):
             ephemeral=True,
         )
 
+        # 🟢 ADDED: Payment Ticket Log System
+        log_channel = guild.get_channel(TICKET_LOG_CHANNEL_ID)
+        if log_channel:
+            log_embed = discord.Embed(
+                title="💳 New Payment Ticket Opened",
+                color=discord.Color.gold(),
+                timestamp=discord.utils.utcnow(),
+            )
+            log_embed.add_field(
+                name="👤 Opened By",
+                value=f"{member.mention} (`{member.id}`)",
+                inline=False,
+            )
+            log_embed.add_field(
+                name="🏷️ Option Selected", value=selected_option, inline=True
+            )
+            log_embed.add_field(
+                name="📂 Ticket Channel",
+                value=ticket_channel.mention,
+                inline=True,
+            )
+            log_embed.set_footer(text=f"User ID: {member.id}")
+
+            await log_channel.send(
+                content=f"<@{TARGET_USER_ID}>", embed=log_embed
+            )
+
 
 class PaymentView(discord.ui.View):
-
     def __init__(self):
         super().__init__(timeout=None)
         self.add_item(PaymentDropdown())
 
 
 class SupportDropdown(discord.ui.Select):
-
     def __init__(self):
         options = [
             discord.SelectOption(
@@ -341,9 +388,35 @@ class SupportDropdown(discord.ui.Select):
             ephemeral=True,
         )
 
+        # 🟢 ADDED: Support Ticket Log System
+        log_channel = guild.get_channel(TICKET_LOG_CHANNEL_ID)
+        if log_channel:
+            log_embed = discord.Embed(
+                title="🛠️ New Support Ticket Opened",
+                color=discord.Color.blue(),
+                timestamp=discord.utils.utcnow(),
+            )
+            log_embed.add_field(
+                name="👤 Opened By",
+                value=f"{member.mention} (`{member.id}`)",
+                inline=False,
+            )
+            log_embed.add_field(
+                name="🏷️ Option Selected", value=selected_option, inline=True
+            )
+            log_embed.add_field(
+                name="📂 Ticket Channel",
+                value=ticket_channel.mention,
+                inline=True,
+            )
+            log_embed.set_footer(text=f"User ID: {member.id}")
+
+            await log_channel.send(
+                content=f"<@{TARGET_USER_ID}>", embed=log_embed
+            )
+
 
 class SupportView(discord.ui.View):
-
     def __init__(self):
         super().__init__(timeout=None)
         self.add_item(SupportDropdown())
@@ -357,6 +430,7 @@ async def on_ready():
     bot.add_view(PurchaseView())
     bot.add_view(PaymentView())
     bot.add_view(SupportView())
+    bot.add_view(CloseButton())
     print(f"🛡️ {bot.user} Rathore X Cheats Bot Online Hai!")
 
 
@@ -422,9 +496,7 @@ async def on_message(message):
     msg_content = message.content.lower()
 
     # 1. Invite Link Check
-    discord_invite_pattern = (
-        r"(discord\.gg|discord\.com/invite)/[a-zA-Z0-9]+"
-    )
+    discord_invite_pattern = r"(discord\.gg|discord\.com/invite)/[a-zA-Z0-9]+"
     if re.search(discord_invite_pattern, msg_content):
         try:
             await message.delete()
@@ -468,7 +540,7 @@ async def on_message(message):
 # --- AUDIT LOG LISTENERS ---
 @bot.event
 async def on_message_delete(message):
-    if message.author.bot:
+    if message.author and message.author.bot:
         return
 
     log_channel = bot.get_channel(AUDIT_LOG_CHANNEL_ID)
@@ -478,17 +550,24 @@ async def on_message_delete(message):
             color=discord.Color.red(),
             timestamp=discord.utils.utcnow(),
         )
+        author_str = (
+            f"{message.author.mention} (`{message.author.id}`)"
+            if message.author
+            else "Unknown User"
+        )
+        embed.add_field(name="Author", value=author_str, inline=True)
         embed.add_field(
-            name="Author",
-            value=f"{message.author.mention} (`{message.author.id}`)",
+            name="Channel",
+            value=message.channel.mention if message.channel else "Unknown",
             inline=True,
         )
         embed.add_field(
-            name="Channel", value=message.channel.mention, inline=True
-        )
-        embed.add_field(
             name="Content",
-            value=message.content if message.content else "*Image/Attachment*",
+            value=(
+                message.content
+                if message.content
+                else "*[Image/Attachment/Uncached Message]*"
+            ),
             inline=False,
         )
         embed.set_footer(text=f"Message ID: {message.id}")
@@ -497,7 +576,9 @@ async def on_message_delete(message):
 
 @bot.event
 async def on_message_edit(before, after):
-    if before.author.bot or before.content == after.content:
+    if before.author and before.author.bot:
+        return
+    if before.content == after.content:
         return
 
     log_channel = bot.get_channel(AUDIT_LOG_CHANNEL_ID)
@@ -507,13 +588,16 @@ async def on_message_edit(before, after):
             color=discord.Color.orange(),
             timestamp=discord.utils.utcnow(),
         )
-        embed.add_field(
-            name="Author",
-            value=f"{before.author.mention} (`{before.author.id}`)",
-            inline=True,
+        author_str = (
+            f"{before.author.mention} (`{before.author.id}`)"
+            if before.author
+            else "Unknown User"
         )
+        embed.add_field(name="Author", value=author_str, inline=True)
         embed.add_field(
-            name="Channel", value=before.channel.mention, inline=True
+            name="Channel",
+            value=before.channel.mention if before.channel else "Unknown",
+            inline=True,
         )
         embed.add_field(
             name="Before",
@@ -535,20 +619,46 @@ async def on_message_edit(before, after):
 @bot.command()
 @commands.has_permissions(administrator=True)
 async def setup_tickets(ctx):
-    """Admin command to setup ticket panels in their respective channels."""
-    purchase_channel = bot.get_channel(PURCHASE_TICKET_CHANNEL_ID)
-    if purchase_channel:
-        embed = discord.Embed(
+    """SABHI Panels (Purchase, Support, Payment) Post Karne Ke Liye Command"""
+
+    # 1. Purchase Panel
+    p_chan = bot.get_channel(PURCHASE_TICKET_CHANNEL_ID)
+    if p_chan:
+        embed_p = discord.Embed(
             title="🛒 Open Purchase Ticket",
-            description="Select an option below to buy cheats or inquire about product pricing.",
+            description="Select an option below to buy cheats or products.",
             color=discord.Color.blue(),
         )
         if PURCHASE_BANNER_URL:
-            embed.set_image(url=PURCHASE_BANNER_URL)
-        await purchase_channel.send(embed=embed, view=PurchaseView())
+            embed_p.set_image(url=PURCHASE_BANNER_URL)
+        await p_chan.send(embed=embed_p, view=PurchaseView())
+
+    # 2. Support Panel
+    s_chan = bot.get_channel(SUPPORT_TICKET_CHANNEL_ID)
+    if s_chan:
+        embed_s = discord.Embed(
+            title="🛠️ Open Support Ticket",
+            description="Select an option below to get assistance from staff.",
+            color=discord.Color.green(),
+        )
+        if SUPPORT_BANNER_URL:
+            embed_s.set_image(url=SUPPORT_BANNER_URL)
+        await s_chan.send(embed=embed_s, view=SupportView())
+
+    # 3. Payment Panel
+    pay_chan = bot.get_channel(PAYMENT_TICKET_CHANNEL_ID)
+    if pay_chan:
+        embed_pay = discord.Embed(
+            title="💳 Payment Methods",
+            description="Select your preferred payment method below.",
+            color=discord.Color.gold(),
+        )
+        if PAYMENT_BANNER_URL:
+            embed_pay.set_image(url=PAYMENT_BANNER_URL)
+        await pay_chan.send(embed=embed_pay, view=PaymentView())
 
     await ctx.send(
-        "✅ Ticket Panels successfully setupted in configured channel!"
+        "✅ Purchase, Support aur Payment Teeno Ticket Panels Setup Ho Gaye Hain!"
     )
 
 
@@ -556,29 +666,11 @@ async def setup_tickets(ctx):
 @commands.has_permissions(administrator=True)
 async def purchasepanel(ctx):
     await ctx.message.delete()
-    description_text = (
-        "Welcome to **RATHORE X CHEATS**, your trusted source for premium modifications, tools, and exclusive services. Create a ticket below to receive fast support, purchase assistance, or answers to your questions.\n\n"
-        "📌 **RULES**\n"
-        "• Create tickets only for purchases, support, or legitimate inquiries.\n"
-        "• Creating tickets for fun, trolling, or wasting staff time will result in a ban.\n"
-        "• All prices are listed publicly. Do not create tickets to negotiate or bargain.\n"
-        "• Be respectful to staff members at all times.\n"
-        "• Do not spam, ping staff repeatedly, or create multiple tickets for the same issue.\n"
-        "• Payments must be completed through approved methods only.\n\n"
-        "🔥 **Why Choose RATHORE X CHEATS !!**\n"
-        "✓ Fast Support\n"
-        "✓ Secure Transactions\n"
-        "✓ Premium Quality Services\n"
-        "✓ Trusted Community\n"
-        "✓ Professional Assistance\n\n"
-        "Click the button below to create a ticket and get started.\n\n"
-        "👑 **RATHORE X CHEATS @2026 | by RATHORE !! |**"
-    )
     embed = discord.Embed(
-        description=description_text,
+        title="🛒 RATHORE X CHEATS - PURCHASE",
+        description="Select an option below to buy cheats or inquire about product pricing.",
         color=discord.Color.from_rgb(88, 101, 242),
     )
-    embed.set_footer(text="Powered by Owner 1nonlyrathore8")
     if PURCHASE_BANNER_URL:
         embed.set_image(url=PURCHASE_BANNER_URL)
     await ctx.send(embed=embed, view=PurchaseView())
