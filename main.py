@@ -272,7 +272,6 @@ class PaymentDropdown(discord.ui.Select):
             ephemeral=True,
         )
 
-        # 🟢 ADDED: Payment Ticket Log System
         log_channel = guild.get_channel(TICKET_LOG_CHANNEL_ID)
         if log_channel:
             log_embed = discord.Embed(
@@ -388,7 +387,6 @@ class SupportDropdown(discord.ui.Select):
             ephemeral=True,
         )
 
-        # 🟢 ADDED: Support Ticket Log System
         log_channel = guild.get_channel(TICKET_LOG_CHANNEL_ID)
         if log_channel:
             log_embed = discord.Embed(
@@ -619,9 +617,6 @@ async def on_message_edit(before, after):
 @bot.command()
 @commands.has_permissions(administrator=True)
 async def setup_tickets(ctx):
-    """SABHI Panels (Purchase, Support, Payment) Post Karne Ke Liye Command"""
-
-    # 1. Purchase Panel
     p_chan = bot.get_channel(PURCHASE_TICKET_CHANNEL_ID)
     if p_chan:
         embed_p = discord.Embed(
@@ -633,7 +628,6 @@ async def setup_tickets(ctx):
             embed_p.set_image(url=PURCHASE_BANNER_URL)
         await p_chan.send(embed=embed_p, view=PurchaseView())
 
-    # 2. Support Panel
     s_chan = bot.get_channel(SUPPORT_TICKET_CHANNEL_ID)
     if s_chan:
         embed_s = discord.Embed(
@@ -645,7 +639,6 @@ async def setup_tickets(ctx):
             embed_s.set_image(url=SUPPORT_BANNER_URL)
         await s_chan.send(embed=embed_s, view=SupportView())
 
-    # 3. Payment Panel
     pay_chan = bot.get_channel(PAYMENT_TICKET_CHANNEL_ID)
     if pay_chan:
         embed_pay = discord.Embed(
