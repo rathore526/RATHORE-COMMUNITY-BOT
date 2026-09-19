@@ -798,7 +798,6 @@ async def silentkill(ctx):
 
     description_text = (
         f"{e}**RATHORE X SILENT KILL**\n\n"
-        "\n\n"
         f"{e}**PANEL FUNCTIONS**\n\n"
         
         "**AIMBOT MODULE**\n"
@@ -837,7 +836,7 @@ async def silentkill(ctx):
         f"{e}**14 DAYS - 1000 INR**\n"
         f"{e}**30 DAYS - 1850 INR**\n\n"
         
-        "**FOR PURCHASE** <#1550562248932724756"
+        "**FOR PURCHASE** <#1550562248932724756>"
     )
 
     embed = discord.Embed(
