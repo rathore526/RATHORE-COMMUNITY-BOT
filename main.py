@@ -90,7 +90,7 @@ class CloseButton(discord.ui.View):
             "⚠️ Generating transcript & deleting ticket in 5 seconds..."
         )
 
-        log_channel = interaction.guild.get_channel(AUDIT_LOG_CHANNEL_ID)
+        log_channel = interaction.guild.get_channel(1550812185679368283)
         if log_channel:
             messages = []
             async for msg in interaction.channel.history(
