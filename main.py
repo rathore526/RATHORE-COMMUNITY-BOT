@@ -32,9 +32,12 @@ intents.auto_moderation = True
 
 bot = commands.Bot(command_prefix="!", intents=intents, max_messages=10000)
 
+# Local backup message cache to fix missing deleted message content
+MESSAGE_CACHE = {}
+
 # ================= CONFIGURATION =================
 WELCOME_CHANNEL_ID = 1548746560626499636
-AUDIT_LOG_CHANNEL_ID = 1550511155464773652
+AUDIT_LOG_CHANNEL_ID = 1548751930665340989  # 👈 Updated: Deleted messages & Role creation logs ke liye
 JOIN_LEAVE_CHANNEL_ID = 1548752079248691200
 MOD_LOG_CHANNEL_ID = 1548751987695296664
 
@@ -110,7 +113,6 @@ class CloseButton(discord.ui.View):
 
 # ================= TICKET VIEWS & DROPDOWNS =================
 
-# 1. PURCHASE DROPDOWN
 class PurchaseDropdown(discord.ui.Select):
     def __init__(self):
         options = [
@@ -141,7 +143,6 @@ class PurchaseDropdown(discord.ui.Select):
 
         await interaction.response.send_message(f"✅ Ticket created: {ticket_channel.mention}", ephemeral=True)
         
-        # Ticket Channel Welcome Message with Close Button
         embed = discord.Embed(
             title="🎫 Purchase Ticket Opened",
             description=f"Welcome {interaction.user.mention}!\nSelected Option: **{selected_option}**\n\nPlease describe what you want to buy. Our staff will respond shortly.",
@@ -149,7 +150,6 @@ class PurchaseDropdown(discord.ui.Select):
         )
         await ticket_channel.send(content=f"{interaction.user.mention}", embed=embed, view=CloseButton())
 
-        # Log Ticket Creation to TICKET_LOG_CHANNEL_ID (Open Channel)
         log_channel = guild.get_channel(TICKET_LOG_CHANNEL_ID)
         if log_channel:
             log_embed = discord.Embed(
@@ -167,7 +167,6 @@ class PurchaseView(discord.ui.View):
         super().__init__(timeout=None)
         self.add_item(PurchaseDropdown())
 
-# 2. PAYMENT DROPDOWN
 class PaymentDropdown(discord.ui.Select):
     def __init__(self):
         options = [
@@ -214,11 +213,9 @@ class PaymentDropdown(discord.ui.Select):
             color=discord.Color.gold()
         )
 
-        # Ticket Channel Message with Close Button
         await ticket_channel.send(content=f"{member.mention}", embed=embed, view=CloseButton())
         await interaction.followup.send(f"✅ Aapka payment ticket ban gaya hai: {ticket_channel.mention}", ephemeral=True)
 
-        # Log Ticket Creation to TICKET_LOG_CHANNEL_ID (Open Channel)
         log_channel = guild.get_channel(TICKET_LOG_CHANNEL_ID)
         if log_channel:
             log_embed = discord.Embed(
@@ -236,7 +233,6 @@ class PaymentView(discord.ui.View):
         super().__init__(timeout=None)
         self.add_item(PaymentDropdown())
 
-# 3. SUPPORT DROPDOWN
 class SupportDropdown(discord.ui.Select):
     def __init__(self):
         options = [
@@ -282,11 +278,9 @@ class SupportDropdown(discord.ui.Select):
             color=discord.Color.from_rgb(57, 255, 20)
         )
 
-        # Ticket Channel Message with Close Button
         await ticket_channel.send(content=f"{member.mention}", embed=embed, view=CloseButton())
         await interaction.followup.send(f"✅ Aapka support ticket ban gaya hai: {ticket_channel.mention}", ephemeral=True)
 
-        # Log Ticket Creation to TICKET_LOG_CHANNEL_ID (Open Channel)
         log_channel = guild.get_channel(TICKET_LOG_CHANNEL_ID)
         if log_channel:
             log_embed = discord.Embed(
@@ -362,20 +356,65 @@ async def on_member_remove(member):
         await log_channel.send(embed=log_embed)
 
 # ================= AUDIT LOG LISTENERS =================
+
+# 1. MESSAGE DELETE LOG
 @bot.event
 async def on_message_delete(message):
     if message.author and message.author.bot:
         return
 
+    cached_data = MESSAGE_CACHE.get(message.id, None)
+    author = message.author or (cached_data.get('author') if cached_data else None)
+    content = message.content or (cached_data.get('content') if cached_data else None)
+    channel = message.channel
+
     log_channel = bot.get_channel(AUDIT_LOG_CHANNEL_ID)
     if log_channel:
         embed = discord.Embed(title="🗑️ Message Deleted", color=discord.Color.red(), timestamp=discord.utils.utcnow())
-        author_str = f"{message.author.mention} (`{message.author.id}`)" if message.author else "Unknown User"
+        
+        author_str = f"{author.mention} (`{author.id}`)" if author else "Unknown User"
+        content_str = content if content else "*[Image/Attachment/Uncached Content]*"
+        
         embed.add_field(name="Author", value=author_str, inline=True)
-        embed.add_field(name="Channel", value=message.channel.mention if message.channel else "Unknown", inline=True)
-        embed.add_field(name="Content", value=message.content if message.content else "*[Image/Attachment/Uncached Message]*", inline=False)
+        embed.add_field(name="Channel", value=channel.mention if channel else "Unknown", inline=True)
+        embed.add_field(name="Deleted Content", value=content_str, inline=False)
         embed.set_footer(text=f"Message ID: {message.id}")
+        
         await log_channel.send(embed=embed)
+        
+    if message.id in MESSAGE_CACHE:
+        del MESSAGE_CACHE[message.id]
+
+# 2. ROLE CREATE LOG
+@bot.event
+async def on_guild_role_create(role):
+    log_channel = bot.get_channel(AUDIT_LOG_CHANNEL_ID)
+    if not log_channel:
+        return
+
+    creator_str = "Unknown User"
+    
+    # Audit log se fetch karna kisne role banaya hai
+    try:
+        await asyncio.sleep(1) # Small delay to let audit log reflect
+        async for entry in role.guild.audit_logs(limit=1, action=discord.AuditLogAction.role_create):
+            if entry.target.id == role.id:
+                creator_str = f"{entry.user.mention} (`{entry.user.id}`)"
+                break
+    except Exception as e:
+        print(f"Audit Log Error: {e}")
+
+    embed = discord.Embed(
+        title="🛠️ New Role Created",
+        color=discord.Color.blue(),
+        timestamp=discord.utils.utcnow()
+    )
+    embed.add_field(name="Role Name", value=f"{role.mention} (`{role.name}`)", inline=True)
+    embed.add_field(name="Role ID", value=f"`{role.id}`", inline=True)
+    embed.add_field(name="Created By", value=creator_str, inline=False)
+    embed.set_footer(text=f"Server: {role.guild.name}")
+
+    await log_channel.send(embed=embed)
 
 @bot.event
 async def on_message_edit(before, after):
@@ -383,6 +422,8 @@ async def on_message_edit(before, after):
         return
     if before.content == after.content:
         return
+
+    MESSAGE_CACHE[after.id] = {'author': after.author, 'content': after.content}
 
     log_channel = bot.get_channel(AUDIT_LOG_CHANNEL_ID)
     if log_channel:
@@ -400,6 +441,11 @@ async def on_message_edit(before, after):
 async def on_message(message):
     if message.author.bot:
         return
+
+    MESSAGE_CACHE[message.id] = {
+        'author': message.author,
+        'content': message.content
+    }
 
     msg_content = message.content.lower()
 
