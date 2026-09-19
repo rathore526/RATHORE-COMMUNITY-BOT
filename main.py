@@ -849,6 +849,50 @@ async def silentkill(ctx):
 
     await ctx.send(embed=embed)
 
+@bot.command()
+async def emulatorbypass(ctx):
+    try:
+        await ctx.message.delete()
+    except Exception:
+        pass
+
+    # Discord space collapse fix variable
+    e = "<a:259419darkbluearrow:1550842821940879432>\u3000"
+
+    description_text = (
+        f"{e}**RATHORE X BYPASS**\n"
+        f"{e}**EMULATOR BYPASS (LIB-BASED) – NEW BR SEASON**\n\n"
+        
+        f"{e}**PLAY THE NEW BR SEASON WITHOUT RESTRICTIONS**\n\n"
+        
+        "**FEATURES**\n"
+        "\n\n"
+        f"{e}NO UID RESTRICTION\n"
+        f"{e}PLAY ON UNLIMITED IDS\n"
+        f"{e}SAFE FOR MAIN ACCOUNT\n"
+        f"{e}NO LIMIT ON KILLS\n\n"
+        
+        "**PRICING**\n"
+        "\n\n"
+        f"{e}**1 DAY – ₹120**\n"
+        f"{e}**7 DAYS – ₹500**\n"
+        f"{e}**15 DAYS – ₹800**\n"
+        f"{e}**1 MONTH – ₹1500**\n"
+        f"{e}**PERMANENT – ₹4500**\n\n"
+        
+        "**FOR PURCHASE** <#1550562248932724756>"
+    )
+
+    embed = discord.Embed(
+        description=description_text,
+        color=discord.Color.from_rgb(0, 162, 255),
+    )
+
+    banner_url = "https://media.discordapp.net/attachments/1490095245302431868/1518999070457200752/standard.gif?ex=6aaf50e0&is=6aadff60&hm=8181c16843246bf0ffb50c20d1287345ecd9640de6680179147a858c8d95ce8a&="
+    embed.set_image(url=banner_url)
+
+    await ctx.send(embed=embed)
+
 # ================= RUN SERVER & BOT =================
 if __name__ == "__main__":
     keep_alive()
