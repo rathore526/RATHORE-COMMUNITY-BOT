@@ -39,7 +39,11 @@ bot = commands.Bot(
     command_prefix="!",
     intents=intents,
     max_messages=10000,
-    partials=[discord.Partials.MESSAGE, discord.Partials.CHANNEL, discord.Partials.REACTION],
+    partials=[
+        discord.Partials.MESSAGE,
+        discord.Partials.CHANNEL,
+        discord.Partials.REACTION,
+    ],
 )
 
 # ================= CONFIGURATION =================
@@ -998,4 +1002,4 @@ if __name__ == "__main__":
     if token:
         bot.run(token)
     else:
-        print("❌ Token nahi mila!")
+        print("❌ Token nahi mila! Kripya environment variables me DISCORD_TOKEN set karein.")
