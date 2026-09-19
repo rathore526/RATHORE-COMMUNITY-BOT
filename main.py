@@ -357,7 +357,6 @@ async def on_ready():
     bot.add_view(PurchaseView())
     bot.add_view(PaymentView())
     bot.add_view(SupportView())
-    bot.add_view(CloseButton())
     print(f"🛡️ {bot.user} Rathore X Cheats Bot Online Hai!")
 
 
