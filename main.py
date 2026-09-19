@@ -37,8 +37,12 @@ WELCOME_CHANNEL_ID = 1548746560626499636
 AUDIT_LOG_CHANNEL_ID = 1550511155464773652
 JOIN_LEAVE_CHANNEL_ID = 1548752079248691200
 MOD_LOG_CHANNEL_ID = 1548751987695296664
-TICKET_LOG_CHANNEL_ID = 1550532272011214919
-TICKET_CLOSED_CHANNEL_ID = 1550812185679368283  # 🔒 Ticket Closed / Transcript Channel ID
+
+# 🟢 Ticket OPEN Logs Channel
+TICKET_LOG_CHANNEL_ID = 1550532272011214919 
+
+# 🔴 Ticket CLOSED Logs Channel & Transcript
+TICKET_CLOSED_CHANNEL_ID = 1550812185679368283  
 
 AUTO_ROLE_NAME = "→ Rathore Community"
 BAD_WORDS = ["rathore ke maa ke chut", "rathore randi", "rathore ke mummy"]
@@ -71,7 +75,7 @@ class CloseButton(discord.ui.View):
 
     @discord.ui.button(label="Close Ticket", style=discord.ButtonStyle.red, emoji="🔒", custom_id="close_ticket_button")
     async def close_ticket(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_message("🔒 Closing ticket and generating transcript...", ephemeral=False)
+        await interaction.response.send_message("🔒 Closing ticket and sending transcript to closed logs...", ephemeral=False)
         
         channel = interaction.channel
         guild = interaction.guild
@@ -86,18 +90,20 @@ class CloseButton(discord.ui.View):
         file_bytes = transcript_text.encode('utf-8')
         transcript_file = discord.File(io.BytesIO(file_bytes), filename=f"transcript-{channel.name}.txt")
 
-        # Send Close Log & Transcript to TICKET_CLOSED_CHANNEL_ID
+        # Send Close Log ONLY to TICKET_CLOSED_CHANNEL_ID
         closed_log_channel = guild.get_channel(TICKET_CLOSED_CHANNEL_ID)
         if closed_log_channel:
             embed = discord.Embed(
-                title="🔒 Ticket Closed & Transcript Saved",
+                title="🔒 Ticket Closed",
                 description=f"Ticket **#{channel.name}** was closed by {interaction.user.mention}.",
                 color=discord.Color.red(),
                 timestamp=discord.utils.utcnow()
             )
             embed.add_field(name="👤 Closed By", value=f"{interaction.user.mention} (`{interaction.user.id}`)", inline=True)
-            embed.add_field(name="📂 Channel Name", value=channel.name, inline=True)
+            embed.add_field(name="📂 Ticket Name", value=channel.name, inline=True)
             await closed_log_channel.send(embed=embed, file=transcript_file)
+        else:
+            print(f"❌ Closed log channel not found! Check ID: {TICKET_CLOSED_CHANNEL_ID}")
 
         await asyncio.sleep(3)
         await channel.delete()
@@ -135,7 +141,7 @@ class PurchaseDropdown(discord.ui.Select):
 
         await interaction.response.send_message(f"✅ Ticket created: {ticket_channel.mention}", ephemeral=True)
         
-        # Ticket Channel Message with Close Button
+        # Ticket Channel Welcome Message with Close Button
         embed = discord.Embed(
             title="🎫 Purchase Ticket Opened",
             description=f"Welcome {interaction.user.mention}!\nSelected Option: **{selected_option}**\n\nPlease describe what you want to buy. Our staff will respond shortly.",
@@ -143,7 +149,7 @@ class PurchaseDropdown(discord.ui.Select):
         )
         await ticket_channel.send(content=f"{interaction.user.mention}", embed=embed, view=CloseButton())
 
-        # Log Ticket Creation to Open Logs Channel
+        # Log Ticket Creation to TICKET_LOG_CHANNEL_ID (Open Channel)
         log_channel = guild.get_channel(TICKET_LOG_CHANNEL_ID)
         if log_channel:
             log_embed = discord.Embed(
@@ -212,7 +218,7 @@ class PaymentDropdown(discord.ui.Select):
         await ticket_channel.send(content=f"{member.mention}", embed=embed, view=CloseButton())
         await interaction.followup.send(f"✅ Aapka payment ticket ban gaya hai: {ticket_channel.mention}", ephemeral=True)
 
-        # Log Payment Ticket Creation to Open Logs Channel
+        # Log Ticket Creation to TICKET_LOG_CHANNEL_ID (Open Channel)
         log_channel = guild.get_channel(TICKET_LOG_CHANNEL_ID)
         if log_channel:
             log_embed = discord.Embed(
@@ -280,7 +286,7 @@ class SupportDropdown(discord.ui.Select):
         await ticket_channel.send(content=f"{member.mention}", embed=embed, view=CloseButton())
         await interaction.followup.send(f"✅ Aapka support ticket ban gaya hai: {ticket_channel.mention}", ephemeral=True)
 
-        # Log Support Ticket Creation to Open Logs Channel
+        # Log Ticket Creation to TICKET_LOG_CHANNEL_ID (Open Channel)
         log_channel = guild.get_channel(TICKET_LOG_CHANNEL_ID)
         if log_channel:
             log_embed = discord.Embed(
