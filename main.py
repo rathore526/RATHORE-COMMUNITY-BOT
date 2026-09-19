@@ -23,18 +23,19 @@ def keep_alive():
     t = Thread(target=run)
     t.start()
 
-# ================= DISCORD BOT SETUP =================
+# ================= DISCORD BOT SETUP (OPTIMIZED CACHE) =================
 intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
 intents.guilds = True
 intents.auto_moderation = True
 
-bot = commands.Bot(command_prefix="!", intents=intents)
+# Max message cache limits added for instant audit log capturing
+bot = commands.Bot(command_prefix="!", intents=intents, max_messages=10000)
 
 # ================= CONFIGURATION =================
 WELCOME_CHANNEL_ID = 1548746560626499636
-AUDIT_LOG_CHANNEL_ID = 1550511155464773652   # Server logs ID / Ticket Transcripts
+AUDIT_LOG_CHANNEL_ID = 1550511155464773652   # Server logs ID / Ticket Transcripts / Audit Logs
 JOIN_LEAVE_CHANNEL_ID = 1548752079248691200  # Join-Leave logs ID
 MOD_LOG_CHANNEL_ID = 1548751987695296664      # Mod-logs ID
 TICKET_LOG_CHANNEL_ID = 1550532272011214919  # Ticket activity logs
@@ -63,7 +64,7 @@ SUPPORT_CATEGORY_NAME = "🎟️┃𝘚𝘜𝘗𝘗𝘖𝘙𝘛"
 PAYMENT_CATEGORY_NAME = "💳┃𝘗𝘈𝘠𝘔𝘌𝘕𝘛-𝘔𝘌𝘛𝘏𝘖𝘋"
 # =================================================
 
-# --- CLOSE TICKET BUTTON WITH TRANSCRIPT LOGGING ---
+# --- CLOSE TICKET BUTTON WITH OPTIMIZED TRANSCRIPT LOGGING ---
 class CloseButton(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
@@ -75,7 +76,7 @@ class CloseButton(discord.ui.View):
         log_channel = interaction.guild.get_channel(AUDIT_LOG_CHANNEL_ID)
         if log_channel:
             messages = []
-            async for msg in interaction.channel.history(limit=500, oldest_first=True):
+            async for msg in interaction.channel.history(limit=300, oldest_first=True):
                 timestamp = msg.created_at.strftime('%Y-%m-%d %H:%M:%S')
                 messages.append(f"[{timestamp}] {msg.author} ({msg.author.id}): {msg.content}")
 
@@ -336,6 +337,44 @@ async def on_member_remove(member):
         log_embed.set_thumbnail(url=member.display_avatar.url)
         await log_channel.send(embed=log_embed)
 
+# ================= INSTANT AUDIT LOG LISTENERS =================
+@bot.event
+async def on_message_delete(message):
+    if message.author.bot:
+        return
+    
+    log_channel = bot.get_channel(AUDIT_LOG_CHANNEL_ID)
+    if log_channel:
+        embed = discord.Embed(
+            title="🗑️ Message Deleted",
+            color=discord.Color.red(),
+            timestamp=discord.utils.utcnow()
+        )
+        embed.add_field(name="Author", value=f"{message.author.mention} (`{message.author.id}`)", inline=True)
+        embed.add_field(name="Channel", value=message.channel.mention, inline=True)
+        embed.add_field(name="Content", value=message.content if message.content else "*Image/Attachment*", inline=False)
+        embed.set_footer(text=f"Message ID: {message.id}")
+        await log_channel.send(embed=embed)
+
+@bot.event
+async def on_message_edit(before, after):
+    if before.author.bot or before.content == after.content:
+        return
+    
+    log_channel = bot.get_channel(AUDIT_LOG_CHANNEL_ID)
+    if log_channel:
+        embed = discord.Embed(
+            title="✏️ Message Edited",
+            color=discord.Color.orange(),
+            timestamp=discord.utils.utcnow()
+        )
+        embed.add_field(name="Author", value=f"{before.author.mention} (`{before.author.id}`)", inline=True)
+        embed.add_field(name="Channel", value=before.channel.mention, inline=True)
+        embed.add_field(name="Before", value=before.content if before.content else "*Empty*", inline=False)
+        embed.add_field(name="After", value=after.content if after.content else "*Empty*", inline=False)
+        embed.set_footer(text=f"Message ID: {before.id}")
+        await log_channel.send(embed=embed)
+
 # --- ON MESSAGE (AUTO-MODERATION & COMMAND PROCESSOR) ---
 @bot.event
 async def on_message(message):
@@ -376,7 +415,6 @@ async def on_message(message):
 
     await bot.process_commands(message)
 
-
 # ================= COMMANDS =================
 
 @bot.command()
@@ -385,35 +423,20 @@ async def purchasepanel(ctx):
     await ctx.message.delete()
     description_text = (
         "Welcome to **RATHORE X CHEATS**, your trusted source for premium modifications, tools, and exclusive services. Create a ticket below to receive fast support, purchase assistance, or answers to your questions.\n\n"
-        "\u200b\n"
         "📌 **RULES**\n"
-        "\u200b\n"
         "• Create tickets only for purchases, support, or legitimate inquiries.\n"
-        "\u200b\n"
         "• Creating tickets for fun, trolling, or wasting staff time will result in a ban.\n"
-        "\u200b\n"
         "• All prices are listed publicly. Do not create tickets to negotiate or bargain.\n"
-        "\u200b\n"
         "• Be respectful to staff members at all times.\n"
-        "\u200b\n"
         "• Do not spam, ping staff repeatedly, or create multiple tickets for the same issue.\n"
-        "\u200b\n"
         "• Payments must be completed through approved methods only.\n\n"
-        "\u200b\n"
         "🔥 **Why Choose RATHORE X CHEATS !!**\n"
-        "\u200b\n"
         "✓ Fast Support\n"
-        "\u200b\n"
         "✓ Secure Transactions\n"
-        "\u200b\n"
         "✓ Premium Quality Services\n"
-        "\u200b\n"
         "✓ Trusted Community\n"
-        "\u200b\n"
         "✓ Professional Assistance\n\n"
-        "\u200b\n"
         "Click the button below to create a ticket and get started.\n\n"
-        "\u200b\n"
         "👑 **RATHORE X CHEATS @2026 | by RATHORE !! |**"
     )
     embed = discord.Embed(description=description_text, color=discord.Color.from_rgb(88, 101, 242))
@@ -566,10 +589,18 @@ async def ban(ctx, member: discord.Member, *, reason="Rule break kiya"):
 @bot.command()
 @commands.has_permissions(moderate_members=True)
 async def timeout(ctx, member: discord.Member, minutes: int = 10, *, reason="Rule break kiya"):
+    if member == ctx.author:
+        await ctx.send("❌ Aap khud ko timeout nahi de sakte!")
+        return
+
+    if member.top_role >= ctx.guild.me.top_role:
+        await ctx.send("❌ Main is user ko timeout nahi de sakta kyunki iska Role mere Bot Role se bada ya barabar hai!")
+        return
+
     duration = datetime.timedelta(minutes=minutes)
     try:
         await member.timeout(duration, reason=reason)
-        await ctx.send(f"⏳ {member.mention} ko {minutes} minute ke liye timeout kar diya gaya.")
+        await ctx.send(f"⏳ {member.mention} ko **{minutes} minute** ke liye timeout kar diya gaya.")
 
         mod_channel = bot.get_channel(MOD_LOG_CHANNEL_ID)
         if mod_channel:
@@ -580,8 +611,11 @@ async def timeout(ctx, member: discord.Member, minutes: int = 10, *, reason="Rul
             embed.add_field(name="Reason", value=reason, inline=False)
             embed.set_thumbnail(url=member.display_avatar.url)
             await mod_channel.send(embed=embed)
+            
+    except discord.Forbidden:
+        await ctx.send("❌ **Forbidden Error:** Mere paas `Moderate Members` permission nahi hai ya yeh user Admin hai.")
     except Exception as e:
-        await ctx.send(f"❌ Timeout Error: {e}", delete_after=5)
+        await ctx.send(f"❌ Error: {e}", delete_after=5)
 
 @bot.command()
 @commands.has_permissions(moderate_members=True)
@@ -655,7 +689,7 @@ async def price(ctx):
         "• **30 DAYS - 1800 INR | 20 USD**\n"
         "• **LIFETIME - 4500 INR | 40 USD**\n\n"
         
-        f"**FOR PURCHASE** <#{1550506034274242580}>"
+        "**FOR PURCHASE** <1550562248932724756>"
     )
 
     embed = discord.Embed(
@@ -663,7 +697,7 @@ async def price(ctx):
         color=discord.Color.from_rgb(0, 162, 255)
     )
 
-    banner_url = "https://media.discordapp.net/attachments/1529086631536234637/1530160532974211283/standard_1.gif?ex=6aae648c&is=6aad130c&hm=283f862178a5555fd3f98901fce6c962da73d7e53108bcb99961ca8a275e0803&=&width=512&height=288"
+    banner_url = "https://media.discordapp.net/attachments/1529086631536234637/1530160532974211283/standard_1.gif"
     embed.set_image(url=banner_url)
 
     await ctx.send(embed=embed)
