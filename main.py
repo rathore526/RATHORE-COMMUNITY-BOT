@@ -37,7 +37,7 @@ MESSAGE_CACHE = {}
 
 # ================= CONFIGURATION =================
 WELCOME_CHANNEL_ID = 1548746560626499636
-AUDIT_LOG_CHANNEL_ID = 1548751930665340989  # 👈 Updated: Deleted messages & Role creation logs ke liye
+AUDIT_LOG_CHANNEL_ID = 1548751930665340989
 JOIN_LEAVE_CHANNEL_ID = 1548752079248691200
 MOD_LOG_CHANNEL_ID = 1548751987695296664
 
@@ -49,6 +49,8 @@ TICKET_CLOSED_CHANNEL_ID = 1550812185679368283
 
 AUTO_ROLE_NAME = "→ Rathore Community"
 BAD_WORDS = ["rathore ke maa ke chut", "rathore randi", "rathore ke mummy"]
+
+# 👑 OWNER ONLY SECURITY (SIRF APKI ID COMMANDS CHALA SAKTI HAI)
 TARGET_USER_ID = 1529085822551326862
 
 # 💳 PAYMENT DETAILS
@@ -70,6 +72,14 @@ PAYMENT_BANNER_URL = "https://media.discordapp.net/attachments/15487699955828695
 PURCHASE_CATEGORY_NAME = "🎫┃𝘗𝘜𝘙𝘊𝘏𝘈𝘚𝘌-𝘏𝘌𝘙𝘌"
 SUPPORT_CATEGORY_NAME = "🎟️┃𝘚𝘜𝘗𝘗𝘖𝘙𝘛"
 PAYMENT_CATEGORY_NAME = "💳┃𝘗𝘈𝘠𝘔𝘌𝘕𝘛-𝘔𝘌𝘛𝘏𝘖𝘋"
+
+# ================= GLOBAL OWNER-ONLY CHECK =================
+@bot.check
+async def restrict_all_commands_to_owner(ctx):
+    if ctx.author.id == TARGET_USER_ID:
+        return True
+    await ctx.send(f"❌ {ctx.author.mention}, aap is bot ki commands use nahi kar sakte! Yeh sirf Bot Owner ke liye hai.", delete_after=5)
+    return False
 
 # ================= CLOSE TICKET BUTTON & TRANSCRIPT =================
 class CloseButton(discord.ui.View):
@@ -394,9 +404,8 @@ async def on_guild_role_create(role):
 
     creator_str = "Unknown User"
     
-    # Audit log se fetch karna kisne role banaya hai
     try:
-        await asyncio.sleep(1) # Small delay to let audit log reflect
+        await asyncio.sleep(1)
         async for entry in role.guild.audit_logs(limit=1, action=discord.AuditLogAction.role_create):
             if entry.target.id == role.id:
                 creator_str = f"{entry.user.mention} (`{entry.user.id}`)"
@@ -481,10 +490,9 @@ async def on_message(message):
 
     await bot.process_commands(message)
 
-# ================= COMMANDS =================
+# ================= OWNER COMMANDS =================
 
 @bot.command()
-@commands.has_permissions(administrator=True)
 async def purchasepanel(ctx):
     await ctx.message.delete()
     description_text = (
@@ -512,7 +520,6 @@ async def purchasepanel(ctx):
     await ctx.send(embed=embed, view=PurchaseView())
 
 @bot.command()
-@commands.has_permissions(administrator=True)
 async def paymentpanel(ctx):
     await ctx.message.delete()
     description_text = (
@@ -536,7 +543,6 @@ async def paymentpanel(ctx):
     await ctx.send(embed=embed, view=PaymentView())
 
 @bot.command()
-@commands.has_permissions(administrator=True)
 async def supportpanel(ctx):
     await ctx.message.delete()
     description_text = (
@@ -555,7 +561,6 @@ async def supportpanel(ctx):
     await ctx.send(embed=embed, view=SupportView())
 
 @bot.command()
-@commands.has_permissions(administrator=True)
 async def upi(ctx):
     try:
         await ctx.message.delete()
@@ -575,7 +580,6 @@ async def upi(ctx):
     await ctx.send(embed=embed)
 
 @bot.command()
-@commands.has_permissions(administrator=True)
 async def binance(ctx):
     try:
         await ctx.message.delete()
@@ -595,7 +599,6 @@ async def binance(ctx):
     await ctx.send(embed=embed)
 
 @bot.command()
-@commands.has_permissions(manage_channels=True)
 async def lock(ctx):
     try:
         await ctx.message.delete()
@@ -612,7 +615,6 @@ async def lock(ctx):
         await ctx.send(f"❌ Error: {e}", delete_after=5)
 
 @bot.command()
-@commands.has_permissions(manage_channels=True)
 async def unlock(ctx):
     try:
         await ctx.message.delete()
@@ -629,13 +631,11 @@ async def unlock(ctx):
         await ctx.send(f"❌ Error: {e}", delete_after=5)
 
 @bot.command()
-@commands.has_permissions(manage_messages=True)
 async def clear(ctx, amount: int = 5):
     await ctx.channel.purge(limit=amount + 1)
     await ctx.send(f"🧹 {amount} messages delete kar diye gaye!", delete_after=3)
 
 @bot.command()
-@commands.has_permissions(kick_members=True)
 async def kick(ctx, member: discord.Member, *, reason="Koyi reason nahi diya"):
     await member.kick(reason=reason)
     await ctx.send(f"🚨 {member.mention} ko kick kar diya gaya. Reason: {reason}")
@@ -650,7 +650,6 @@ async def kick(ctx, member: discord.Member, *, reason="Koyi reason nahi diya"):
         await mod_channel.send(embed=embed)
 
 @bot.command()
-@commands.has_permissions(ban_members=True)
 async def ban(ctx, member: discord.Member, *, reason="Rule break kiya"):
     await member.ban(reason=reason)
     await ctx.send(f"⛔ {member.mention} ko BAN kar diya gaya. Reason: {reason}")
@@ -665,7 +664,6 @@ async def ban(ctx, member: discord.Member, *, reason="Rule break kiya"):
         await mod_channel.send(embed=embed)
 
 @bot.command()
-@commands.has_permissions(moderate_members=True)
 async def timeout(ctx, member: discord.Member, minutes: int = 10, *, reason="Rule break kiya"):
     if member == ctx.author:
         await ctx.send("❌ Aap khud ko timeout nahi de sakte!")
@@ -696,7 +694,6 @@ async def timeout(ctx, member: discord.Member, minutes: int = 10, *, reason="Rul
         await ctx.send(f"❌ Error: {e}", delete_after=5)
 
 @bot.command()
-@commands.has_permissions(moderate_members=True)
 async def untimeout(ctx, member: discord.Member):
     try:
         await member.timeout(None)
@@ -709,7 +706,6 @@ async def ping(ctx):
     await ctx.send("Pong!")
 
 @bot.command()
-@commands.has_permissions(administrator=True)
 async def price(ctx):
     try:
         await ctx.message.delete()
