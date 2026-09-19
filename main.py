@@ -1002,4 +1002,4 @@ if __name__ == "__main__":
     if token:
         bot.run(token)
     else:
-        print("❌ Token nahi mila! Kripya environment variables me DISCORD_TOKEN set karein.")
+        print("❌ Token nahi mila!)
