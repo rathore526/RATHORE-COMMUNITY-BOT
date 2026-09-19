@@ -77,53 +77,6 @@ PAYMENT_CATEGORY_NAME = "💳┃𝘗𝘈𝘠𝘔𝘌𝘕𝘛-𝘔𝘌𝘛𝘏�
 
 # ================= VIEWS & BUTTONS =================
 
-
-class CloseButton(discord.ui.View):
-
-    def __init__(self):
-        super().__init__(timeout=None)
-
-    @discord.ui.button(
-        label="🔒 Close Ticket",
-        style=discord.ButtonStyle.red,
-        custom_id="close_ticket_btn",
-    )
-    async def close_ticket(
-        self, interaction: discord.Interaction, button: discord.ui.Button
-    ):
-        await interaction.response.send_message(
-            "⚠️ Generating transcript & deleting ticket in 5 seconds..."
-        )
-
-        log_channel = interaction.guild.get_channel(TICKET_TRANSCRIPT_LOG_ID)
-        if log_channel:
-            messages = []
-            async for msg in interaction.channel.history(
-                limit=300, oldest_first=True
-            ):
-                timestamp = msg.created_at.strftime("%Y-%m-%d %H:%M:%S")
-                messages.append(
-                    f"[{timestamp}] {msg.author} ({msg.author.id}): {msg.content}"
-                )
-
-            transcript_text = "\n".join(messages)
-            file_data = io.BytesIO(transcript_text.encode("utf-8"))
-            discord_file = discord.File(
-                fp=file_data,
-                filename=f"transcript-{interaction.channel.name}.txt",
-            )
-
-            embed = discord.Embed(
-                title="📄 Ticket Transcript Log",
-                description=f"**Ticket Name:** {interaction.channel.name}\n**Closed By:** {interaction.user.mention}",
-                color=discord.Color.red(),
-            )
-            await log_channel.send(embed=embed, file=discord_file)
-
-        await asyncio.sleep(5)
-        await interaction.channel.delete()
-
-
 class PurchaseDropdown(discord.ui.Select):
 
     def __init__(self):
