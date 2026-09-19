@@ -893,6 +893,45 @@ async def emulatorbypass(ctx):
 
     await ctx.send(embed=embed)
 
+@bot.command()
+async def paidpush(ctx):
+    try:
+        await ctx.message.delete()
+    except Exception:
+        pass
+
+    # Discord space collapse fix variable
+    e = "<a:259419darkbluearrow:1550842821940879432>\u3000"
+
+    description_text = (
+        f"{e}**RATHORE X PAID PUSH**\n"
+        "\n\n"
+        f"{e}**PAID PUSH PRICING**\n\n"
+        
+        f"{e}**20 STAR = 80 INR**\n"
+        f"{e}**40 STAR = 160 INR**\n"
+        f"{e}**60 STAR = 240 INR**\n"
+        f"{e}**80 STAR = 320 INR**\n"
+        f"{e}**100 STAR = 400 INR**\n"
+        f"{e}**200 STAR = 800 INR**\n"
+        f"{e}**300 STAR = 1200 INR**\n"
+        f"{e}**400 STAR = 1600 INR**\n"
+        f"{e}**500 STAR = 2000 INR**\n"
+        f"{e}**999 STAR = 2999 INR**\n\n"
+        
+        "**FOR PURCHASE** <#1550562248932724756>"
+    )
+
+    embed = discord.Embed(
+        description=description_text,
+        color=discord.Color.from_rgb(0, 162, 255),
+    )
+
+    banner_url = "https://media.discordapp.net/attachments/1490095245302431868/1519005559347478818/standard_2.gif?ex=6aaf56eb&is=6aae056b&hm=241c3c051ae74c731f460040df41c73d236d800cd077cce8387690ee7d9aa01c&"
+    embed.set_image(url=banner_url)
+
+    await ctx.send(embed=embed)
+
 # ================= RUN SERVER & BOT =================
 if __name__ == "__main__":
     keep_alive()
