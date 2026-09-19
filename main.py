@@ -786,6 +786,70 @@ async def price(ctx):
 
     await ctx.send(embed=embed)
 
+@bot.command()
+async def silentkill(ctx):
+    try:
+        await ctx.message.delete()
+    except Exception:
+        pass
+
+    # Discord space collapse fix variable
+    e = "<a:259419darkbluearrow:1550842821940879432>\u3000"
+
+    description_text = (
+        f"{e}**RATHORE X SILENT KILL**\n\n"
+        "\n\n"
+        f"{e}**PANEL FUNCTIONS**\n\n"
+        
+        "**AIMBOT MODULE**\n"
+        "\n\n"
+        f"{e}ENABLE ALL\n"
+        f"{e}SILENT AIM\n"
+        f"{e}PULL 360\n"
+        f"{e}SHOW BEHIND ENEMY\n"
+        f"{e}FLY HACK\n"
+        f"{e}TELEPORT\n"
+        f"{e}GHOST\n"
+        f"{e}JOYSTICK SPEED\n"
+        f"{e}SPEED RUN\n\n"
+        
+        "**VISUALS MODULE**\n"
+        "\n\n"
+        f"{e}ESP LINE\n"
+        f"{e}ESP BOX\n"
+        f"{e}ESP NAME\n"
+        f"{e}ESP HEALTH\n"
+        f"{e}ESP DISTANCE\n\n"
+        
+        "**CORE USP :**\n"
+        "\n\n"
+        f"{e}REGULAR UPDATES\n"
+        f"{e}FASTEST SUPPORT\n"
+        f"{e}ALL SERVER SAFE\n\n"
+        
+        "**SETTINGS**\n"
+        "\n\n"
+        f"{e}RESET GUEST\n\n"
+        
+        "**PRICES**\n"
+        "\n\n"
+        f"{e}**7 DAYS - 650 INR**\n"
+        f"{e}**14 DAYS - 1000 INR**\n"
+        f"{e}**30 DAYS - 1850 INR**\n\n"
+        
+        "**FOR PURCHASE** <#1550562248932724756"
+    )
+
+    embed = discord.Embed(
+        description=description_text,
+        color=discord.Color.from_rgb(0, 162, 255),
+    )
+
+    banner_url = "https://media.discordapp.net/attachments/1529086631536234637/1530162682630766713/standard_2.gif?ex=6aafb80c&is=6aae668c&hm=6a000d56a052d47af2d56ef4205d37be309fc40bd3ed294aea9d7abcfb9c389e&=&width=512&height=180"
+    embed.set_image(url=banner_url)
+
+    await ctx.send(embed=embed)
+
 # ================= RUN SERVER & BOT =================
 if __name__ == "__main__":
     keep_alive()
