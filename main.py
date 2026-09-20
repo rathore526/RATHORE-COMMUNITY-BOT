@@ -1,9 +1,68 @@
 import os
 import datetime
+from flask import Flask
+from threading import Thread
 import discord
 from discord.ext import commands
 
-# Assume keep_alive, bot setup, configs, UI views, and check_anti_nuke / nuke_punish functions are already defined above.
+# ================= KEEP ALIVE SERVER (FOR 24/7 HOSTING) =================
+app = Flask('')
+
+@app.route('/')
+def home():
+    return "Bot is alive and running!"
+
+def run():
+    app.run(host='0.0.0.0', port=8080)
+
+def keep_alive():
+    t = Thread(target=run)
+    t.daemon = True
+    t.start()
+
+# ================= BOT INITIALIZATION & CONFIGS =================
+intents = discord.Intents.default()
+intents.message_content = True
+intents.members = True
+
+bot = commands.Bot(command_prefix="!", intents=intents)
+
+# Config Placeholders (Set your values or environment variables)
+MOD_LOG_CHANNEL_ID = int(os.environ.get("MOD_LOG_CHANNEL_ID", 0))
+AUTO_ROLE_NAME = "Member"
+
+PURCHASE_BANNER_URL = os.environ.get("PURCHASE_BANNER_URL", "")
+PAYMENT_BANNER_URL = os.environ.get("PAYMENT_BANNER_URL", "")
+SUPPORT_BANNER_URL = os.environ.get("SUPPORT_BANNER_URL", "")
+
+UPI_ID = os.environ.get("UPI_ID", "example@upi")
+UPI_NAME = os.environ.get("UPI_NAME", "Rathore X")
+UPI_QR_URL = os.environ.get("UPI_QR_URL", "")
+
+BINANCE_ID = os.environ.get("BINANCE_ID", "123456789")
+BINANCE_NAME = os.environ.get("BINANCE_NAME", "Rathore X Crypto")
+BINANCE_QR_URL = os.environ.get("BINANCE_QR_URL", "")
+
+# ================= PLACEHOLDER UI VIEWS =================
+class PurchaseView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+
+class PaymentView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+
+class SupportView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+
+# ================= ANTI-NUKE DUMMY FUNCTIONS =================
+# Replace or connect these with your custom anti-nuke tracking logic if needed.
+def check_anti_nuke(user_id: int, action_type: str) -> bool:
+    return False
+
+async def nuke_punish(guild: discord.Guild, user: discord.Member, action_type: str):
+    pass
 
 # ================= HELPER DECORATORS & FUNCTIONS =================
 
@@ -48,6 +107,11 @@ async def safe_mod_action(ctx, target: discord.Member, action_name: str, action_
         await ctx.send(f"❌ Error: {e}", delete_after=5)
     return False
 
+# ================= BOT EVENTS =================
+
+@bot.event
+async def on_ready():
+    print(f"✅ Bot is online! Logged in as {bot.user}")
 
 # ================= COMMANDS =================
 
@@ -521,4 +585,4 @@ if __name__ == "__main__":
     if token:
         bot.run(token)
     else:
-        print("❌ Token nahi mila!")
+        print("❌ Token nahi mila! Kripya environment variables check karein.")
