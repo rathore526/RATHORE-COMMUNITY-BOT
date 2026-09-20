@@ -1,589 +1,53 @@
 import os
-import io
-import re
-import asyncio
 import datetime
-from collections import defaultdict
-from threading import Thread
-from flask import Flask
 import discord
 from discord.ext import commands
 
-# ================= FLASK KEEP ALIVE SERVER =================
-app = Flask('')
+# Assume keep_alive, bot setup, configs, UI views, and check_anti_nuke / nuke_punish functions are already defined above.
 
-@app.route('/')
-def home():
-    return "Bot is alive and running!"
+# ================= HELPER DECORATORS & FUNCTIONS =================
 
-def run():
-    port = int(os.environ.get("PORT", 8080))
-    app.run(host='0.0.0.0', port=port)
+def anti_nuke_check(action_type):
+    """
+    Decorator to check anti-nuke limits before executing moderation commands.
+    """
+    async def predicate(ctx):
+        if check_anti_nuke(ctx.author.id, action_type):
+            await nuke_punish(ctx.guild, ctx.author, action_type.capitalize())
+            await ctx.send(f"⚠️ **Anti-Nuke Triggered!** {ctx.author.mention} has been disciplined for exceeding action limits.", delete_after=10)
+            return False
+        return True
+    return commands.check(predicate)
 
-def keep_alive():
-    t = Thread(target=run)
-    t.start()
-
-# ================= DISCORD BOT SETUP =================
-intents = discord.Intents.default()
-intents.message_content = True
-intents.members = True
-intents.guilds = True
-intents.auto_moderation = True
-
-bot = commands.Bot(command_prefix="!", intents=intents, max_messages=10000)
-
-# Local backup message cache to fix missing deleted message content
-MESSAGE_CACHE = {}
-
-# ================= CONFIGURATION =================
-WELCOME_CHANNEL_ID = 1548746560626499636
-AUDIT_LOG_CHANNEL_ID = 1548751930665340989
-JOIN_LEAVE_CHANNEL_ID = 1548752079248691200
-MOD_LOG_CHANNEL_ID = 1548751987695296664
-
-# 🟢 Ticket OPEN Logs Channel
-TICKET_LOG_CHANNEL_ID = 1550532272011214919 
-
-# 🔴 Ticket CLOSED Logs Channel & Transcript
-TICKET_CLOSED_CHANNEL_ID = 1550812185679368283  
-
-AUTO_ROLE_NAME = "→ Rathore Community"
-BAD_WORDS = ["rathore ke maa ke chut", "rathore randi", "rathore ke mummy"]
-
-# 👑 OWNER ONLY SECURITY (SIRF APKI ID COMMANDS CHALA SAKTI HAI)
-TARGET_USER_ID = 1529085822551326862
-
-# 💳 PAYMENT DETAILS
-UPI_ID = "9818940367@fam"
-UPI_NAME = "Krishna"
-UPI_QR_URL = "https://cdn.discordapp.com/attachments/1548769995582869554/1550484011082850384/Screenshot_20260809-233235_FamApp.jpg"
-
-BINANCE_ID = "123456789"
-BINANCE_NAME = "Rathore X Crypto"
-BINANCE_QR_URL = "https://your-image-url.com/binance_qr.png"
-
-# 🖼️ BANNERS
-BANNER_IMAGE_URL = "https://cdn.discordapp.com/attachments/1529086631536234637/1548913864811479070/WLCM.gif"
-PURCHASE_BANNER_URL = "https://media.discordapp.net/attachments/1548769995582869554/1550471469119574067/standard.gif"
-SUPPORT_BANNER_URL = "https://cdn.discordapp.com/attachments/1529086631536234637/1548903192644026489/standard_2.gif"
-PAYMENT_BANNER_URL = "https://media.discordapp.net/attachments/1548769995582869554/1550488423511629914/standard_1.gif"
-
-# 🎫 TICKET CATEGORIES
-PURCHASE_CATEGORY_NAME = "🎫┃𝘗𝘜𝘙𝘊𝘏𝘈𝘚𝘌-𝘏𝘌𝘙𝘌"
-SUPPORT_CATEGORY_NAME = "🎟️┃𝘚𝘜𝘗𝘗𝘖𝘙𝘛"
-PAYMENT_CATEGORY_NAME = "💳┃𝘗𝘈𝘠𝘔𝘌𝘕𝘛-𝘔𝘌𝘛𝘏𝘖𝘋"
-
-# ================= ANTI-NUKE CONFIGURATION =================
-ANTI_NUKE_LIMITS = {
-    'channel_delete': 3,   # Max channels deleted per 1 min
-    'category_delete': 1,  # Max categories deleted per 1 min (Strict punishment)
-    'role_delete': 3,      # Max roles deleted per 1 min
-    'ban_member': 3,       # Max bans per 1 min
-    'kick_member': 3       # Max kicks per 1 min
-}
-
-# Tracking dicts for action counts
-action_tracker = defaultdict(lambda: defaultdict(list))
-
-def check_anti_nuke(user_id, action_type):
-    if user_id == TARGET_USER_ID:
+async def safe_mod_action(ctx, target: discord.Member, action_name: str, action_coro):
+    """
+    Safely executes moderation actions while handling permissions and error states.
+    """
+    if target == ctx.author:
+        await ctx.send("❌ Aap khud par yeh action nahi le sakte!", delete_after=5)
         return False
-    
-    now = datetime.datetime.now(datetime.timezone.utc)
-    cutoff = now - datetime.timedelta(seconds=60)
-    
-    action_tracker[user_id][action_type] = [
-        t for t in action_tracker[user_id][action_type] if t > cutoff
-    ]
-    
-    action_tracker[user_id][action_type].append(now)
-    
-    if len(action_tracker[user_id][action_type]) >= ANTI_NUKE_LIMITS[action_type]:
+
+    if target == ctx.guild.owner:
+        await ctx.send("❌ Server Owner par yeh action nahi liya ja sakta!", delete_after=5)
+        return False
+
+    if target.top_role >= ctx.guild.me.top_role:
+        await ctx.send("❌ Main is user par action nahi le sakta kyunki iska Role mere Bot Role se bada ya barabar hai!", delete_after=5)
+        return False
+
+    if target.top_role >= ctx.author.top_role and ctx.author != ctx.guild.owner:
+        await ctx.send("❌ Aap apne se barabar ya uche Role wale user par action nahi le sakte!", delete_after=5)
+        return False
+
+    try:
+        await action_coro
         return True
+    except discord.Forbidden:
+        await ctx.send(f"❌ **Forbidden Error:** Mere paas {action_name} karne ki required permissions nahi hain.", delete_after=5)
+    except Exception as e:
+        await ctx.send(f"❌ Error: {e}", delete_after=5)
     return False
 
-async def nuke_punish(guild, user, action_name):
-    try:
-        await guild.ban(user, reason=f"[ANTI-NUKE] Triggered mass {action_name}")
-        log_channel = guild.get_channel(MOD_LOG_CHANNEL_ID)
-        if log_channel:
-            embed = discord.Embed(
-                title="🛡️ ANTI-NUKE TRIGGERED",
-                description=f"🚨 **{user.mention}** (`{user.id}`) was BANNED for attempting {action_name}!",
-                color=discord.Color.dark_red(),
-                timestamp=discord.utils.utcnow()
-            )
-            await log_channel.send(embed=embed)
-    except Exception as e:
-        print(f"Anti-nuke punishment error: {e}")
-
-# ================= GLOBAL OWNER-ONLY CHECK =================
-@bot.check
-async def restrict_all_commands_to_owner(ctx):
-    if ctx.author.id == TARGET_USER_ID:
-        return True
-    await ctx.send(f"❌ {ctx.author.mention}, aap is bot ki commands use nahi kar sakte! Yeh sirf Bot Owner ke liye hai.", delete_after=5)
-    return False
-
-# ================= CLOSE TICKET BUTTON & TRANSCRIPT =================
-class CloseButton(discord.ui.View):
-    def __init__(self):
-        super().__init__(timeout=None)
-
-    @discord.ui.button(label="Close Ticket", style=discord.ButtonStyle.red, emoji="🔒", custom_id="close_ticket_button")
-    async def close_ticket(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_message("🔒 Closing ticket and sending transcript to closed logs...", ephemeral=False)
-        
-        channel = interaction.channel
-        guild = interaction.guild
-
-        messages = []
-        async for msg in channel.history(limit=500, oldest_first=True):
-            time_str = msg.created_at.strftime("%Y-%m-%d %H:%M:%S")
-            messages.append(f"[{time_str}] {msg.author} ({msg.author.id}): {msg.clean_content}")
-
-        transcript_text = "\n".join(messages)
-        file_bytes = transcript_text.encode('utf-8')
-        transcript_file = discord.File(io.BytesIO(file_bytes), filename=f"transcript-{channel.name}.txt")
-
-        closed_log_channel = guild.get_channel(TICKET_CLOSED_CHANNEL_ID)
-        if closed_log_channel:
-            embed = discord.Embed(
-                title="🔒 Ticket Closed",
-                description=f"Ticket **#{channel.name}** was closed by {interaction.user.mention}.",
-                color=discord.Color.red(),
-                timestamp=discord.utils.utcnow()
-            )
-            embed.add_field(name="👤 Closed By", value=f"{interaction.user.mention} (`{interaction.user.id}`)", inline=True)
-            embed.add_field(name="📂 Ticket Name", value=channel.name, inline=True)
-            await closed_log_channel.send(embed=embed, file=transcript_file)
-        else:
-            print(f"❌ Closed log channel not found! Check ID: {TICKET_CLOSED_CHANNEL_ID}")
-
-        await asyncio.sleep(3)
-        await channel.delete()
-
-# ================= TICKET VIEWS & DROPDOWNS =================
-
-class PurchaseDropdown(discord.ui.Select):
-    def __init__(self):
-        options = [
-            discord.SelectOption(label="Buy Cheat / Service", description="Open ticket to buy cheats or products", emoji="🛒"),
-            discord.SelectOption(label="Inquire Price / Support", description="Ask details about pricing", emoji="💵"),
-        ]
-        super().__init__(placeholder="Select a purchase option", min_values=1, max_values=1, options=options, custom_id="purchase_dropdown_menu")
-
-    async def callback(self, interaction: discord.Interaction):
-        selected_option = self.values[0]
-        guild = interaction.guild
-
-        category = discord.utils.get(guild.categories, name=PURCHASE_CATEGORY_NAME)
-        if not category:
-            category = await guild.create_category(PURCHASE_CATEGORY_NAME)
-
-        overwrites = {
-            guild.default_role: discord.PermissionOverwrite(read_messages=False),
-            interaction.user: discord.PermissionOverwrite(read_messages=True, send_messages=True),
-            guild.me: discord.PermissionOverwrite(read_messages=True, send_messages=True)
-        }
-
-        ticket_channel = await guild.create_text_channel(
-            name=f"purchase-{interaction.user.name.lower()}",
-            overwrites=overwrites,
-            category=category
-        )
-
-        await interaction.response.send_message(f"✅ Ticket created: {ticket_channel.mention}", ephemeral=True)
-        
-        embed = discord.Embed(
-            title="🎫 Purchase Ticket Opened",
-            description=f"Welcome {interaction.user.mention}!\nSelected Option: **{selected_option}**\n\nPlease describe what you want to buy. Our staff will respond shortly.",
-            color=discord.Color.blue()
-        )
-        await ticket_channel.send(content=f"{interaction.user.mention}", embed=embed, view=CloseButton())
-
-        log_channel = guild.get_channel(TICKET_LOG_CHANNEL_ID)
-        if log_channel:
-            log_embed = discord.Embed(
-                title="🎟️ New Purchase Ticket Opened",
-                color=discord.Color.green(),
-                timestamp=discord.utils.utcnow()
-            )
-            log_embed.add_field(name="👤 Opened By", value=f"{interaction.user.mention} (`{interaction.user.id}`)", inline=False)
-            log_embed.add_field(name="🏷️ Option Selected", value=selected_option, inline=True)
-            log_embed.add_field(name="📂 Ticket Channel", value=ticket_channel.mention, inline=True)
-            await log_channel.send(content=f"<@{TARGET_USER_ID}>", embed=log_embed)
-
-class PurchaseView(discord.ui.View):
-    def __init__(self):
-        super().__init__(timeout=None)
-        self.add_item(PurchaseDropdown())
-
-class PaymentDropdown(discord.ui.Select):
-    def __init__(self):
-        options = [
-            discord.SelectOption(label="Indian Payment (UPI / QR)", description="Pay via PhonePe, Paytm, GPay, UPI QR", emoji="🇮🇳"),
-            discord.SelectOption(label="Binance / Crypto Payment", description="Pay via Binance Pay, USDT, Crypto", emoji="🟡"),
-        ]
-        super().__init__(placeholder="Select your preferred Payment Method", min_values=1, max_values=1, options=options, custom_id="payment_dropdown_menu")
-
-    async def callback(self, interaction: discord.Interaction):
-        await interaction.response.defer(ephemeral=True)
-
-        guild = interaction.guild
-        member = interaction.user
-        selected_option = self.values[0]
-
-        prefix = "upi" if "Indian Payment" in selected_option else "crypto"
-
-        category = discord.utils.get(guild.categories, name=PAYMENT_CATEGORY_NAME)
-        if not category:
-            category = await guild.create_category(PAYMENT_CATEGORY_NAME)
-
-        channel_name = f"{prefix}-{member.name.lower()}"
-        existing_channel = discord.utils.get(guild.channels, name=channel_name)
-
-        if existing_channel:
-            await interaction.followup.send(f"❌ Aapka payment ticket pehle se khula hai: {existing_channel.mention}", ephemeral=True)
-            return
-
-        overwrites = {
-            guild.default_role: discord.PermissionOverwrite(read_messages=False),
-            member: discord.PermissionOverwrite(read_messages=True, send_messages=True),
-            guild.me: discord.PermissionOverwrite(read_messages=True, send_messages=True)
-        }
-
-        ticket_channel = await guild.create_text_channel(
-            name=channel_name,
-            category=category,
-            overwrites=overwrites
-        )
-
-        embed = discord.Embed(
-            title=f"💳 Payment Ticket: {selected_option}",
-            description=f"Hello {member.mention}, welcome!\n\nStaff will send payment details shortly. You can also use `!upi` or `!binance` command here.",
-            color=discord.Color.gold()
-        )
-
-        await ticket_channel.send(content=f"{member.mention}", embed=embed, view=CloseButton())
-        await interaction.followup.send(f"✅ Aapka payment ticket ban gaya hai: {ticket_channel.mention}", ephemeral=True)
-
-        log_channel = guild.get_channel(TICKET_LOG_CHANNEL_ID)
-        if log_channel:
-            log_embed = discord.Embed(
-                title="💳 New Payment Ticket Opened",
-                color=discord.Color.gold(),
-                timestamp=discord.utils.utcnow()
-            )
-            log_embed.add_field(name="👤 Opened By", value=f"{member.mention} (`{member.id}`)", inline=False)
-            log_embed.add_field(name="🏷️ Method Selected", value=selected_option, inline=True)
-            log_embed.add_field(name="📂 Ticket Channel", value=ticket_channel.mention, inline=True)
-            await log_channel.send(content=f"<@{TARGET_USER_ID}>", embed=log_embed)
-
-class PaymentView(discord.ui.View):
-    def __init__(self):
-        super().__init__(timeout=None)
-        self.add_item(PaymentDropdown())
-
-class SupportDropdown(discord.ui.Select):
-    def __init__(self):
-        options = [
-            discord.SelectOption(label="General Support", description="Get general help from staff team", emoji="❓"),
-            discord.SelectOption(label="Technical Issue", description="Get help with errors or issues", emoji="⚙️"),
-            discord.SelectOption(label="Report Player/Issue", description="Report a member or server issue", emoji="🚨"),
-        ]
-        super().__init__(placeholder="Select a support option", min_values=1, max_values=1, options=options, custom_id="support_dropdown_menu")
-
-    async def callback(self, interaction: discord.Interaction):
-        await interaction.response.defer(ephemeral=True)
-
-        guild = interaction.guild
-        member = interaction.user
-        selected_option = self.values[0]
-
-        category = discord.utils.get(guild.categories, name=SUPPORT_CATEGORY_NAME)
-        if not category:
-            category = await guild.create_category(SUPPORT_CATEGORY_NAME)
-
-        channel_name = f"support-{member.name.lower()}"
-        existing_channel = discord.utils.get(guild.channels, name=channel_name)
-
-        if existing_channel:
-            await interaction.followup.send(f"❌ Aapka support ticket pehle se khula hai: {existing_channel.mention}", ephemeral=True)
-            return
-
-        overwrites = {
-            guild.default_role: discord.PermissionOverwrite(read_messages=False),
-            member: discord.PermissionOverwrite(read_messages=True, send_messages=True),
-            guild.me: discord.PermissionOverwrite(read_messages=True, send_messages=True)
-        }
-
-        ticket_channel = await guild.create_text_channel(
-            name=channel_name,
-            category=category,
-            overwrites=overwrites
-        )
-
-        embed = discord.Embed(
-            title=f"🛠️ Support Ticket: {selected_option}",
-            description=f"Hello {member.mention}, welcome to Support! Please explain your issue, and our staff team will assist you shortly.",
-            color=discord.Color.from_rgb(57, 255, 20)
-        )
-
-        await ticket_channel.send(content=f"{member.mention}", embed=embed, view=CloseButton())
-        await interaction.followup.send(f"✅ Aapka support ticket ban gaya hai: {ticket_channel.mention}", ephemeral=True)
-
-        log_channel = guild.get_channel(TICKET_LOG_CHANNEL_ID)
-        if log_channel:
-            log_embed = discord.Embed(
-                title="🛠️ New Support Ticket Opened",
-                color=discord.Color.from_rgb(57, 255, 20),
-                timestamp=discord.utils.utcnow()
-            )
-            log_embed.add_field(name="👤 Opened By", value=f"{member.mention} (`{member.id}`)", inline=False)
-            log_embed.add_field(name="🏷️ Issue Type", value=selected_option, inline=True)
-            log_embed.add_field(name="📂 Ticket Channel", value=ticket_channel.mention, inline=True)
-            await log_channel.send(content=f"<@{TARGET_USER_ID}>", embed=log_embed)
-
-class SupportView(discord.ui.View):
-    def __init__(self):
-        super().__init__(timeout=None)
-        self.add_item(SupportDropdown())
-
-# ================= BOT EVENTS =================
-@bot.event
-async def on_ready():
-    bot.add_view(PurchaseView())
-    bot.add_view(PaymentView())
-    bot.add_view(SupportView())
-    bot.add_view(CloseButton())
-    print(f"🛡️ {bot.user} Rathore X Cheats Bot Online Hai!")
-
-@bot.event
-async def on_member_join(member):
-    if member.bot:
-        try:
-            async for entry in member.guild.audit_logs(limit=1, action=discord.AuditLogAction.bot_add):
-                if entry.user.id != TARGET_USER_ID:
-                    await member.ban(reason="[ANTI-BOT] Unauthorised bot added")
-                    await member.guild.ban(entry.user, reason="[ANTI-BOT] Added unauthorized bot")
-                    return
-        except Exception as e:
-            print(f"Anti-Bot Error: {e}")
-
-    role = discord.utils.get(member.guild.roles, name=AUTO_ROLE_NAME)
-    if role:
-        try:
-            await member.add_roles(role)
-        except Exception as e:
-            print(f"Role error: {e}")
-
-    channel = bot.get_channel(WELCOME_CHANNEL_ID)
-    if channel:
-        content_text = f"{member.mention} Welcome to **RATHORE COMMUNITY**!!!"
-        embed_description = (
-            "📌 | **<#1548747102799269959>**\n"
-            "MAKE SURE YOU READ ALL THE RULES\n\n"
-            "📢 | **<#1548747535147860098>**\n"
-            "ALL THE ANNOUNCEMENT ARE THERE\n\n"
-            "💬 | **<#1548759359402676244>**\n"
-            "INTRODUCE YOURSELF HERE BY CHATTING IN GENERAL CHAT\n\n"
-            "YOU HAVE A GOOD DAY IN **RATHORE COMMUNITY** !! AND THANKS FOR A PART OF OUR COMMUNITY"
-        )
-        embed = discord.Embed(description=embed_description, color=discord.Color.from_rgb(0, 162, 255))
-        if BANNER_IMAGE_URL:
-            embed.set_image(url=BANNER_IMAGE_URL)
-        await channel.send(content=content_text, embed=embed)
-
-    log_channel = bot.get_channel(JOIN_LEAVE_CHANNEL_ID)
-    if log_channel:
-        log_embed = discord.Embed(
-            title="📥 Member Joined",
-            description=f"{member.mention} ({member.name}) ne server join kiya!",
-            color=discord.Color.green()
-        )
-        log_embed.set_thumbnail(url=member.display_avatar.url)
-        await log_channel.send(embed=log_embed)
-
-@bot.event
-async def on_member_remove(member):
-    log_channel = bot.get_channel(JOIN_LEAVE_CHANNEL_ID)
-    if log_channel:
-        log_embed = discord.Embed(
-            title="📤 Member Left",
-            description=f"**{member.name}** ne server chor diya hai.",
-            color=discord.Color.red()
-        )
-        log_embed.set_thumbnail(url=member.display_avatar.url)
-        await log_channel.send(embed=log_embed)
-
-# ================= AUDIT LOG & ANTI-NUKE LISTENERS =================
-
-# 1. ANTI-NUKE: CHANNEL & CATEGORY DELETE PROTECTION
-@bot.event
-async def on_guild_channel_delete(channel):
-    try:
-        async for entry in channel.guild.audit_logs(limit=1, action=discord.AuditLogAction.channel_delete):
-            executor = entry.user
-            
-            # Category Delete Detection
-            if isinstance(channel, discord.CategoryChannel):
-                if check_anti_nuke(executor.id, 'category_delete'):
-                    await nuke_punish(channel.guild, executor, "Category Delete")
-            # Text / Voice Channel Delete Detection
-            else:
-                if check_anti_nuke(executor.id, 'channel_delete'):
-                    await nuke_punish(channel.guild, executor, "Channel Delete")
-            break
-    except Exception as e:
-        print(f"Anti-Nuke Channel/Category Delete Error: {e}")
-
-# 2. ANTI-NUKE: ROLE DELETE PROTECTION
-@bot.event
-async def on_guild_role_delete(role):
-    try:
-        async for entry in role.guild.audit_logs(limit=1, action=discord.AuditLogAction.role_delete):
-            executor = entry.user
-            if check_anti_nuke(executor.id, 'role_delete'):
-                await nuke_punish(role.guild, executor, "Role Delete")
-            break
-    except Exception as e:
-        print(f"Anti-Nuke Role Delete Error: {e}")
-
-# 3. ANTI-NUKE: BAN AUDIT MONITORING
-@bot.event
-async def on_member_ban(guild, user):
-    try:
-        async for entry in guild.audit_logs(limit=1, action=discord.AuditLogAction.ban):
-            executor = entry.user
-            if executor.id != bot.user.id and check_anti_nuke(executor.id, 'ban_member'):
-                await nuke_punish(guild, executor, "Member Ban")
-            break
-    except Exception as e:
-        print(f"Anti-Nuke Ban Error: {e}")
-
-# 4. MESSAGE DELETE LOG
-@bot.event
-async def on_message_delete(message):
-    if message.author and message.author.bot:
-        return
-
-    cached_data = MESSAGE_CACHE.get(message.id, None)
-    author = message.author or (cached_data.get('author') if cached_data else None)
-    content = message.content or (cached_data.get('content') if cached_data else None)
-    channel = message.channel
-
-    log_channel = bot.get_channel(AUDIT_LOG_CHANNEL_ID)
-    if log_channel:
-        embed = discord.Embed(title="🗑️ Message Deleted", color=discord.Color.red(), timestamp=discord.utils.utcnow())
-        
-        author_str = f"{author.mention} (`{author.id}`)" if author else "Unknown User"
-        content_str = content if content else "*[Image/Attachment/Uncached Content]*"
-        
-        embed.add_field(name="Author", value=author_str, inline=True)
-        embed.add_field(name="Channel", value=channel.mention if channel else "Unknown", inline=True)
-        embed.add_field(name="Deleted Content", value=content_str, inline=False)
-        embed.set_footer(text=f"Message ID: {message.id}")
-        
-        await log_channel.send(embed=embed)
-        
-    if message.id in MESSAGE_CACHE:
-        del MESSAGE_CACHE[message.id]
-
-# 5. ROLE CREATE LOG
-@bot.event
-async def on_guild_role_create(role):
-    log_channel = bot.get_channel(AUDIT_LOG_CHANNEL_ID)
-    if not log_channel:
-        return
-
-    creator_str = "Unknown User"
-    try:
-        await asyncio.sleep(1)
-        async for entry in role.guild.audit_logs(limit=1, action=discord.AuditLogAction.role_create):
-            if entry.target.id == role.id:
-                creator_str = f"{entry.user.mention} (`{entry.user.id}`)"
-                break
-    except Exception as e:
-        print(f"Audit Log Error: {e}")
-
-    embed = discord.Embed(
-        title="🛠️ New Role Created",
-        color=discord.Color.blue(),
-        timestamp=discord.utils.utcnow()
-    )
-    embed.add_field(name="Role Name", value=f"{role.mention} (`{role.name}`)", inline=True)
-    embed.add_field(name="Role ID", value=f"`{role.id}`", inline=True)
-    embed.add_field(name="Created By", value=creator_str, inline=False)
-    embed.set_footer(text=f"Server: {role.guild.name}")
-
-    await log_channel.send(embed=embed)
-
-@bot.event
-async def on_message_edit(before, after):
-    if before.author and before.author.bot:
-        return
-    if before.content == after.content:
-        return
-
-    MESSAGE_CACHE[after.id] = {'author': after.author, 'content': after.content}
-
-    log_channel = bot.get_channel(AUDIT_LOG_CHANNEL_ID)
-    if log_channel:
-        embed = discord.Embed(title="✏️ Message Edited", color=discord.Color.orange(), timestamp=discord.utils.utcnow())
-        author_str = f"{before.author.mention} (`{before.author.id}`)" if before.author else "Unknown User"
-        embed.add_field(name="Author", value=author_str, inline=True)
-        embed.add_field(name="Channel", value=before.channel.mention if before.channel else "Unknown", inline=True)
-        embed.add_field(name="Before", value=before.content if before.content else "*Empty*", inline=False)
-        embed.add_field(name="After", value=after.content if after.content else "*Empty*", inline=False)
-        embed.set_footer(text=f"Message ID: {before.id}")
-        await log_channel.send(embed=embed)
-
-# --- AUTOMOD & COMMAND PROCESSOR ---
-@bot.event
-async def on_message(message):
-    if message.author.bot:
-        return
-
-    MESSAGE_CACHE[message.id] = {
-        'author': message.author,
-        'content': message.content
-    }
-
-    msg_content = message.content.lower()
-
-    # 1. Invite Link Check
-    discord_invite_pattern = r"(discord\.gg|discord\.com/invite)/[a-zA-Z0-9]+"
-    if re.search(discord_invite_pattern, msg_content):
-        try:
-            await message.delete()
-            await message.channel.send(f"⚠️ {message.author.mention}, invite links allowed nahi hain!", delete_after=5)
-        except Exception as e:
-            print(f"Delete Error: {e}")
-        return
-
-    # 2. Owner Mention Check
-    user_tagged = any(user.id == TARGET_USER_ID for user in message.mentions)
-    if user_tagged or message.mention_everyone:
-        try:
-            await message.delete()
-            await message.channel.send(f"⚠️ {message.author.mention}, owner ko ping nahi kar sakte!", delete_after=5)
-        except Exception as e:
-            print(f"Delete Error: {e}")
-        return
-
-    # 3. Bad Words Check
-    for word in BAD_WORDS:
-        if word in msg_content:
-            try:
-                await message.delete()
-                await message.channel.send(f"⚠️ {message.author.mention}, bad words allowed nahi hain!", delete_after=5)
-            except Exception as e:
-                print(f"Delete Error: {e}")
-            return
-
-    await bot.process_commands(message)
 
 # ================= COMMANDS =================
 
@@ -694,6 +158,7 @@ async def binance(ctx):
     await ctx.send(embed=embed)
 
 @bot.command()
+@commands.has_permissions(manage_channels=True)
 async def lock(ctx):
     try:
         await ctx.message.delete()
@@ -710,6 +175,7 @@ async def lock(ctx):
         await ctx.send(f"❌ Error: {e}", delete_after=5)
 
 @bot.command()
+@commands.has_permissions(manage_channels=True)
 async def unlock(ctx):
     try:
         await ctx.message.delete()
@@ -726,61 +192,50 @@ async def unlock(ctx):
         await ctx.send(f"❌ Error: {e}", delete_after=5)
 
 @bot.command()
+@commands.has_permissions(manage_messages=True)
 async def clear(ctx, amount: int = 5):
     await ctx.channel.purge(limit=amount + 1)
     await ctx.send(f"🧹 {amount} messages delete kar diye gaye!", delete_after=3)
 
 @bot.command()
+@commands.has_permissions(kick_members=True)
+@anti_nuke_check('kick_member')
 async def kick(ctx, member: discord.Member, *, reason="Koyi reason nahi diya"):
-    if check_anti_nuke(ctx.author.id, 'kick_member'):
-        await nuke_punish(ctx.guild, ctx.author, "Kick")
-        return
-
-    await member.kick(reason=reason)
-    await ctx.send(f"🚨 {member.mention} ko kick kar diya gaya. Reason: {reason}")
-
-    mod_channel = bot.get_channel(MOD_LOG_CHANNEL_ID)
-    if mod_channel:
-        embed = discord.Embed(title="👢 Member Kicked", color=discord.Color.orange())
-        embed.add_field(name="User", value=f"{member.mention} ({member.name})", inline=True)
-        embed.add_field(name="Moderator", value=ctx.author.mention, inline=True)
-        embed.add_field(name="Reason", value=reason, inline=False)
-        embed.set_thumbnail(url=member.display_avatar.url)
-        await mod_channel.send(embed=embed)
+    success = await safe_mod_action(ctx, member, "Kick", member.kick(reason=reason))
+    if success:
+        await ctx.send(f"🚨 {member.mention} ko kick kar diya gaya. Reason: {reason}")
+        mod_channel = bot.get_channel(MOD_LOG_CHANNEL_ID)
+        if mod_channel:
+            embed = discord.Embed(title="👢 Member Kicked", color=discord.Color.orange())
+            embed.add_field(name="User", value=f"{member.mention} ({member.name})", inline=True)
+            embed.add_field(name="Moderator", value=ctx.author.mention, inline=True)
+            embed.add_field(name="Reason", value=reason, inline=False)
+            embed.set_thumbnail(url=member.display_avatar.url)
+            await mod_channel.send(embed=embed)
 
 @bot.command()
+@commands.has_permissions(ban_members=True)
+@anti_nuke_check('ban_member')
 async def ban(ctx, member: discord.Member, *, reason="Rule break kiya"):
-    if check_anti_nuke(ctx.author.id, 'ban_member'):
-        await nuke_punish(ctx.guild, ctx.author, "Ban")
-        return
-
-    await member.ban(reason=reason)
-    await ctx.send(f"⛔ {member.mention} ko BAN kar diya gaya. Reason: {reason}")
-
-    mod_channel = bot.get_channel(MOD_LOG_CHANNEL_ID)
-    if mod_channel:
-        embed = discord.Embed(title="🔨 Member Banned", color=discord.Color.dark_red())
-        embed.add_field(name="User", value=f"{member.mention} ({member.name})", inline=True)
-        embed.add_field(name="Moderator", value=ctx.author.mention, inline=True)
-        embed.add_field(name="Reason", value=reason, inline=False)
-        embed.set_thumbnail(url=member.display_avatar.url)
-        await mod_channel.send(embed=embed)
+    success = await safe_mod_action(ctx, member, "Ban", member.ban(reason=reason))
+    if success:
+        await ctx.send(f"⛔ {member.mention} ko BAN kar diya gaya. Reason: {reason}")
+        mod_channel = bot.get_channel(MOD_LOG_CHANNEL_ID)
+        if mod_channel:
+            embed = discord.Embed(title="🔨 Member Banned", color=discord.Color.dark_red())
+            embed.add_field(name="User", value=f"{member.mention} ({member.name})", inline=True)
+            embed.add_field(name="Moderator", value=ctx.author.mention, inline=True)
+            embed.add_field(name="Reason", value=reason, inline=False)
+            embed.set_thumbnail(url=member.display_avatar.url)
+            await mod_channel.send(embed=embed)
 
 @bot.command()
+@commands.has_permissions(moderate_members=True)
 async def timeout(ctx, member: discord.Member, minutes: int = 10, *, reason="Rule break kiya"):
-    if member == ctx.author:
-        await ctx.send("❌ Aap khud ko timeout nahi de sakte!")
-        return
-
-    if member.top_role >= ctx.guild.me.top_role:
-        await ctx.send("❌ Main is user ko timeout nahi de sakta kyunki iska Role mere Bot Role se bada ya barabar hai!")
-        return
-
     duration = datetime.timedelta(minutes=minutes)
-    try:
-        await member.timeout(duration, reason=reason)
+    success = await safe_mod_action(ctx, member, "Timeout", member.timeout(duration, reason=reason))
+    if success:
         await ctx.send(f"⏳ {member.mention} ko **{minutes} minute** ke liye timeout kar diya gaya.")
-
         mod_channel = bot.get_channel(MOD_LOG_CHANNEL_ID)
         if mod_channel:
             embed = discord.Embed(title="⏳ Member Timed Out", color=discord.Color.gold())
@@ -791,18 +246,12 @@ async def timeout(ctx, member: discord.Member, minutes: int = 10, *, reason="Rul
             embed.set_thumbnail(url=member.display_avatar.url)
             await mod_channel.send(embed=embed)
 
-    except discord.Forbidden:
-        await ctx.send("❌ **Forbidden Error:** Mere paas `Moderate Members` permission nahi hai ya yeh user Admin hai.")
-    except Exception as e:
-        await ctx.send(f"❌ Error: {e}", delete_after=5)
-
 @bot.command()
+@commands.has_permissions(moderate_members=True)
 async def untimeout(ctx, member: discord.Member):
-    try:
-        await member.timeout(None)
+    success = await safe_mod_action(ctx, member, "Untimeout", member.timeout(None))
+    if success:
         await ctx.send(f"✅ {member.mention} ka timeout hata diya gaya hai.")
-    except Exception as e:
-        await ctx.send(f"❌ Error: {e}", delete_after=5)
 
 @bot.command()
 async def ping(ctx):
