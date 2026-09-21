@@ -9,6 +9,29 @@ from threading import Thread
 import discord
 from discord.ext import commands
 from flask import Flask
+from dotenv import load_dotenv
+
+# --- SECURITY FIX ---
+load_dotenv() # .env ya Render ke variables load karega
+
+TOKEN = os.getenv("DISCORD_TOKEN")
+if not TOKEN:
+    print("❌ CRITICAL: DISCORD_TOKEN Render Environment me nahi mila!")
+    exit()
+
+OWNER_IDS_STR = os.getenv("OWNER_IDS", "")
+OWNER_IDS = [int(x.strip()) for x in OWNER_IDS_STR.split(",") if x.strip().isdigit()]
+
+# Flask keep-alive for Render
+app = Flask(__name__)
+@app.route('/')
+def home():
+    return "Bot is Alive & Secure!"
+
+def run_flask():
+    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 8080)))
+
+Thread(target=run_flask).start()
 
 # ================= FLASK KEEP ALIVE SERVER =================
 app = Flask('')
