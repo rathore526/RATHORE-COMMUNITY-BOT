@@ -14,31 +14,31 @@ from dotenv import load_dotenv
 # --- SECURITY FIX ---
 load_dotenv() # .env ya Render ke variables load karega
 
-TOKEN = os.getenv("DISCORD_TOKEN")
+TOKEN = os.getenv("DISCORD_TOKEN") or os.getenv("TOKEN") or os.getenv("DISCORD_BOT_TOKEN")
 if not TOKEN:
     print("❌ CRITICAL: DISCORD_TOKEN Render Environment me nahi mila!")
-    exit()
 
 OWNER_IDS_STR = os.getenv("OWNER_IDS", "")
 OWNER_IDS = [int(x.strip()) for x in OWNER_IDS_STR.split(",") if x.strip().isdigit()]
 
-# Flask keep-alive for Render
+# Flask keep-alive for Render - FIXED
 app = Flask(__name__)
 @app.route('/')
 def home():
     return "Bot is Alive & Secure!"
 
-def run_flask():
-    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 8080)))
-
-Thread(target=run_flask).start()
+def keep_alive():
+    # Render gives PORT env, default 10000
+    port = int(os.environ.get("PORT", 10000))
+    t = Thread(target=lambda: app.run(host='0.0.0.0', port=port))
+    t.daemon = True
+    t.start()
 
 # ================= DISCORD BOT SETUP =================
 intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
 intents.guilds = True
-intents.auto_moderation = True
 
 bot = commands.Bot(command_prefix='!', intents=intents, max_messages=10000)
 
@@ -72,7 +72,7 @@ BINANCE_ID = '123456789'
 BINANCE_NAME = 'Rathore X Crypto'
 BINANCE_QR_URL = 'https://your-image-url.com/binance_qr.png'
 
-# 🖼️ BANNERS
+# 🖼 BANNERS
 BANNER_IMAGE_URL = 'https://cdn.discordapp.com/attachments/1529086631536234637/1548913864811479070/WLCM.gif'
 PURCHASE_BANNER_URL = 'https://media.discordapp.net/attachments/1548769995582869554/1550471469119574067/standard.gif'
 SUPPORT_BANNER_URL = 'https://cdn.discordapp.com/attachments/1529086631536234637/1548903192644026489/standard_2.gif'
@@ -80,7 +80,7 @@ PAYMENT_BANNER_URL = 'https://media.discordapp.net/attachments/15487699955828695
 
 # 🎫 TICKET CATEGORIES
 PURCHASE_CATEGORY_NAME = '🎫┃𝘗𝘜𝘙𝘊𝘏𝘈𝘚𝘌-𝘏𝘌𝘙𝘌'
-SUPPORT_CATEGORY_NAME = '🎟️┃𝘚𝘜𝘗𝘗𝘖𝘙𝘛'
+SUPPORT_CATEGORY_NAME = '🎟┃𝘚𝘜𝘗𝘗𝘖𝘙𝘛'
 PAYMENT_CATEGORY_NAME = '💳┃𝘗𝘈𝘠𝘔𝘌𝘕𝘛-𝘔𝘌𝘛𝘏𝘖𝘋'
 
 # ================= ANTI-NUKE CONFIGURATION =================
@@ -97,7 +97,7 @@ action_tracker = defaultdict(lambda: defaultdict(list))
 
 
 def check_anti_nuke(user_id, action_type):
-    if user_id == TARGET_USER_ID:
+    if user_id == TARGET_USER_ID or user_id in OWNER_IDS:
         return False
 
     now = datetime.datetime.now(datetime.timezone.utc)
@@ -125,7 +125,7 @@ async def nuke_punish(guild, user, action_name):
         log_channel = guild.get_channel(MOD_LOG_CHANNEL_ID)
         if log_channel:
             embed = discord.Embed(
-                title='🛡️ ANTI-NUKE TRIGGERED',
+                title='🛡 ANTI-NUKE TRIGGERED',
                 description=f'🚨 **{user.mention}** (`{user.id}`) was BANNED for attempting {action_name}!',
                 color=discord.Color.dark_red(),
                 timestamp=discord.utils.utcnow(),
@@ -138,7 +138,7 @@ async def nuke_punish(guild, user, action_name):
 # ================= GLOBAL OWNER-ONLY CHECK =================
 @bot.check
 async def restrict_all_commands_to_owner(ctx):
-    if ctx.author.id == TARGET_USER_ID:
+    if ctx.author.id == TARGET_USER_ID or ctx.author.id in OWNER_IDS:
         return True
     await ctx.send(
         f'❌ {ctx.author.mention}, aap is bot ki commands use nahi kar sakte! Yeh sirf Bot Owner ke liye hai.',
@@ -281,7 +281,7 @@ class PurchaseDropdown(discord.ui.Select):
         log_channel = guild.get_channel(TICKET_LOG_CHANNEL_ID)
         if log_channel:
             log_embed = discord.Embed(
-                title='🎟️ New Purchase Ticket Opened',
+                title='🎟 New Purchase Ticket Opened',
                 color=discord.Color.green(),
                 timestamp=discord.utils.utcnow(),
             )
@@ -291,7 +291,7 @@ class PurchaseDropdown(discord.ui.Select):
                 inline=False,
             )
             log_embed.add_field(
-                name='🏷️ Option Selected', value=selected_option, inline=True
+                name='🏷 Option Selected', value=selected_option, inline=True
             )
             log_embed.add_field(
                 name='📂 Ticket Channel',
@@ -403,7 +403,7 @@ class PaymentDropdown(discord.ui.Select):
                 inline=False,
             )
             log_embed.add_field(
-                name='🏷️ Method Selected', value=selected_option, inline=True
+                name='🏷 Method Selected', value=selected_option, inline=True
             )
             log_embed.add_field(
                 name='📂 Ticket Channel',
@@ -434,7 +434,7 @@ class SupportDropdown(discord.ui.Select):
             discord.SelectOption(
                 label='Technical Issue',
                 description='Get help with errors or issues',
-                emoji='⚙️',
+                emoji='⚙',
             ),
             discord.SelectOption(
                 label='Report Player/Issue',
@@ -492,7 +492,7 @@ class SupportDropdown(discord.ui.Select):
         )
 
         embed = discord.Embed(
-            title=f'🛠️ Support Ticket: {selected_option}',
+            title=f'🛠 Support Ticket: {selected_option}',
             description=f'Hello {member.mention}, welcome to Support! Please explain your issue, and our staff team will assist you shortly.',
             color=discord.Color.from_rgb(57, 255, 20),
         )
@@ -508,7 +508,7 @@ class SupportDropdown(discord.ui.Select):
         log_channel = guild.get_channel(TICKET_LOG_CHANNEL_ID)
         if log_channel:
             log_embed = discord.Embed(
-                title='🛠️ New Support Ticket Opened',
+                title='🛠 New Support Ticket Opened',
                 color=discord.Color.from_rgb(57, 255, 20),
                 timestamp=discord.utils.utcnow(),
             )
@@ -518,7 +518,7 @@ class SupportDropdown(discord.ui.Select):
                 inline=False,
             )
             log_embed.add_field(
-                name='🏷️ Issue Type', value=selected_option, inline=True
+                name='🏷 Issue Type', value=selected_option, inline=True
             )
             log_embed.add_field(
                 name='📂 Ticket Channel',
@@ -544,7 +544,7 @@ async def on_ready():
     bot.add_view(PaymentView())
     bot.add_view(SupportView())
     bot.add_view(CloseButton())
-    print(f'🛡️ {bot.user} Rathore X Cheats Bot Online Hai!')
+    print(f'🛡 {bot.user} Rathore X Cheats Bot Online Hai!')
 
 
 @bot.event
@@ -554,7 +554,7 @@ async def on_member_join(member):
             async for entry in member.guild.audit_logs(
                 limit=1, action=discord.AuditLogAction.bot_add
             ):
-                if entry.user.id != TARGET_USER_ID:
+                if entry.user.id != TARGET_USER_ID and entry.user.id not in OWNER_IDS:
                     await member.ban(
                         reason='[ANTI-BOT] Unauthorised bot added'
                     )
@@ -692,7 +692,7 @@ async def on_message_delete(message):
     log_channel = bot.get_channel(AUDIT_LOG_CHANNEL_ID)
     if log_channel:
         embed = discord.Embed(
-            title='🗑️ Message Deleted',
+            title='🗑 Message Deleted',
             color=discord.Color.red(),
             timestamp=discord.utils.utcnow(),
         )
@@ -741,7 +741,7 @@ async def on_guild_role_create(role):
         print(f'Audit Log Error: {e}')
 
     embed = discord.Embed(
-        title='🛠️ New Role Created',
+        title='🛠 New Role Created',
         color=discord.Color.blue(),
         timestamp=discord.utils.utcnow(),
     )
@@ -771,7 +771,7 @@ async def on_message_edit(before, after):
     log_channel = bot.get_channel(AUDIT_LOG_CHANNEL_ID)
     if log_channel:
         embed = discord.Embed(
-            title='✏️ Message Edited',
+            title='✏ Message Edited',
             color=discord.Color.orange(),
             timestamp=discord.utils.utcnow(),
         )
@@ -819,7 +819,7 @@ async def on_message(message):
         try:
             await message.delete()
             await message.channel.send(
-                f'⚠️ {message.author.mention}, invite links allowed nahi hain!',
+                f'⚠ {message.author.mention}, invite links allowed nahi hain!',
                 delete_after=5,
             )
         except Exception as e:
@@ -832,7 +832,7 @@ async def on_message(message):
         try:
             await message.delete()
             await message.channel.send(
-                f'⚠️ {message.author.mention}, owner ko ping nahi kar sakte!',
+                f'⚠ {message.author.mention}, owner ko ping nahi kar sakte!',
                 delete_after=5,
             )
         except Exception as e:
@@ -845,7 +845,7 @@ async def on_message(message):
             try:
                 await message.delete()
                 await message.channel.send(
-                    f'⚠️ {message.author.mention}, bad words allowed nahi hain!',
+                    f'⚠ {message.author.mention}, bad words allowed nahi hain!',
                     delete_after=5,
                 )
             except Exception as e:
@@ -914,7 +914,7 @@ async def paymentpanel(ctx):
 async def supportpanel(ctx):
     await ctx.message.delete()
     description_text = (
-        '🛠️ **RATHORE X CHEATS — SUPPORT TICKET**\n\nNeed help? Our support'
+        '🛠 **RATHORE X CHEATS — SUPPORT TICKET**\n\nNeed help? Our support'
         ' team is here to assist you with technical issues, account problems,'
         ' or product questions.\n\n📌 **SUPPORT RULES**\n• Open tickets only'
         ' for genuine support requests.\n• Clearly explain your issue with'
@@ -943,7 +943,7 @@ async def upi(ctx):
             ' Transaction ID**:\n\n'
             f'🔹 **UPI ID:** `{UPI_ID}`\n'
             f'🔹 **Payee Name:** {UPI_NAME}\n\n'
-            '⚠️ *Payment complete hone ke baad screenshot zaroor bhejein!*'
+            '⚠ *Payment complete hone ke baad screenshot zaroor bhejein!*'
         ),
         color=discord.Color.green(),
     )
@@ -965,7 +965,7 @@ async def binance(ctx):
             'Send payment using Binance Pay ID or Crypto address:\n\n'
             f'🔹 **Binance Pay ID / Address:** `{BINANCE_ID}`\n'
             f'🔹 **Account Name:** {BINANCE_NAME}\n\n'
-            '⚠️ *Double check the address before sending crypto!*'
+            '⚠ *Double check the address before sending crypto!*'
         ),
         color=discord.Color.gold(),
     )
@@ -1229,7 +1229,7 @@ async def silentkill(ctx):
     except Exception:
         pass
 
-    e = '<a:259419darkbluearrow:1550842821940879432>\u3000'
+    e = '<a:259419darkbluearrow:1550842821940879432>　'
 
     description_text = (
         f'{e}**RATHORE X SILENT KILL**\n\n'
@@ -1281,7 +1281,7 @@ async def emulatorbypass(ctx):
     except Exception:
         pass
 
-    e = '<a:259419darkbluearrow:1550842821940879432>\u3000'
+    e = '<a:259419darkbluearrow:1550842821940879432>　'
 
     description_text = (
         f'{e}**RATHORE X BYPASS**\n'
@@ -1319,7 +1319,7 @@ async def paidpush(ctx):
     except Exception:
         pass
 
-    e = '<a:259419darkbluearrow:1550842821940879432>\u3000'
+    e = '<a:259419darkbluearrow:1550842821940879432>　'
 
     description_text = (
         f'{e}**RATHORE X PAID PUSH**\n\n'
@@ -1355,7 +1355,7 @@ async def level8ids(ctx):
     except Exception:
         pass
 
-    e = '<a:259419darkbluearrow:1550842821940879432>\u3000'
+    e = '<a:259419darkbluearrow:1550842821940879432>　'
 
     description_text = (
         f'{e}**LV 8 IDS**\n\n'
@@ -1382,7 +1382,7 @@ async def rules(ctx):
     except Exception:
         pass
 
-    e = '<a:259419darkbluearrow:1550842821940879432>\u3000'
+    e = '<a:259419darkbluearrow:1550842821940879432>　'
 
     description_text = (
         f'{e}**RATHORE X RULES**\n\n'
@@ -1436,12 +1436,9 @@ async def rules(ctx):
 # ================= RUN SERVER & BOT =================
 if __name__ == '__main__':
     keep_alive()
-    token = (
-        os.environ.get('DISCORD_TOKEN')
-        or os.getenv('TOKEN')
-        or os.environ.get('DISCORD_BOT_TOKEN')
-    )
-    if token:
-        bot.run(token)
+    print("✅ Flask server started in background")
+    if not TOKEN:
+        print('❌ Token nahi mila! Render Environment me DISCORD_TOKEN check karo')
     else:
-        print('❌ Token nahi mila!')
+        print("🚀 Starting Discord Bot...")
+        bot.run(TOKEN)
